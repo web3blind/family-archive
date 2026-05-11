@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Семейный архив — редактор</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Перейти к редактору</a>
+  <header class="site-header">
+    <div>
+      <p class="eyebrow">Редактор данных</p>
+      <h1>Заполнение семейного архива</h1>
+      <p class="lead">Добавляйте людей, связи, истории и медиа. Данные сохраняются в браузере и экспортируются в JSON.</p>
+    </div>
+    <nav aria-label="Основная навигация">
+      <a class="button button-secondary" href="index.html">Перейти к просмотру</a>
+    </nav>
+  </header>
+
+  <main id="main" class="editor-layout">
+    <section class="panel editor-start" aria-labelledby="editorStartHeading">
+      <p class="eyebrow">Как заполнять</p>
+      <h2 id="editorStartHeading">Идите по шагам</h2>
+      <p class="hint">Сначала настройте архив, затем добавьте людей, истории и медиа. В конце скачайте обновлённый <code>archive.json</code>.</p>
+      <nav class="step-nav" aria-label="Шаги редактора">
+        <a href="#archiveSettingsHeading"><span>1</span> Архив</a>
+        <a href="#personFormHeading"><span>2</span> Люди</a>
+        <a href="#storiesHeading"><span>3</span> Истории</a>
+        <a href="#mediaHeading"><span>4</span> Медиа</a>
+        <a href="#importExportHeading"><span>5</span> Экспорт</a>
+      </nav>
+    </section>
+
+    <section class="panel" aria-labelledby="archiveSettingsHeading">
+      <p class="eyebrow">Шаг 1</p>
+      <h2 id="archiveSettingsHeading">Архив</h2>
+      <p class="hint">Название видно в режиме просмотра. Корневой человек — тот, от кого строится древо предков.
+      <div class="form-grid two">
+        <label>Название архива
+          <input id="archiveTitleInput" type="text">
+        </label>
+        <label>Корневой человек для дерева
+          <select id="rootPersonInput"></select>
+        </label>
+      </div>
+      <div class="actions">
+        <button id="saveArchiveButton" class="button" type="button">Сохранить в браузере</button>
+        <button id="resetDemoButton" class="button button-secondary" type="button">Вернуть демо-данные</button>
+      </div>
+      <p id="editorStatus" class="status-note" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="panel" aria-labelledby="personFormHeading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Шаг 2</p>
+          <h2 id="personFormHeading">Люди</h2>
+          <p class="hint">Создайте карточки родственников. В списке просмотра будет видно только главное: фото, ФИО, место и чем человек запомнился семье.</p>
+        </div>
+        <button id="newPersonButton" class="button button-secondary" type="button">Добавить человека</button>
+      </div>
+      <div class="editor-columns">
+        <div>
+          <label for="personPicker">Выбрать человека для редактирования</label>
+          <select id="personPicker" size="8" aria-describedby="personPickerHint"></select>
+          <p id="personPickerHint" class="hint">После выбора форма заполнится автоматически.</p>
+        </div>
+        <form id="personForm" class="stacked-form">
+          <input id="personId" type="hidden">
+          <div class="form-grid two">
+            <label>ФИО
+              <input id="fullName" required type="text" placeholder="Например: Анна Петровна Иванова">
+            </label>
+            <label>Главное фото
+              <select id="primaryMediaId" aria-describedby="primaryMediaHint"></select>
+              <span id="primaryMediaHint" class="field-hint">Сначала добавьте фото в разделе “Медиа”, затем выберите его здесь.</span>
+            </label>
+            <label>Дата рождения
+              <input id="birthDate" type="text" placeholder="например: 1924 или 1924-05-09">
+            </label>
+            <label>Дата смерти
+              <input id="deathDate" type="text">
+            </label>
+            <label>Страна
+              <input id="country" type="text" placeholder="Например: Россия">
+            </label>
+            <label>Место жизни
+              <input id="place" type="text" placeholder="Город, область, деревня">
+            </label>
+            <label>Мать
+              <select id="motherId"></select>
+            </label>
+            <label>Отец
+              <select id="fatherId"></select>
+            </label>
+          </div>
+          <label>Чем запомнился семье
+            <textarea id="rememberFor" rows="3" required placeholder="Например: пекла хлеб для всей улицы, прошёл войну, построил дом, сохранила семейные письма"></textarea>
+            <span class="field-hint">Это главный текст для краткой карточки в просмотре.</span>
+          </label>
+          <label>Короткая биография
+            <textarea id="bio" rows="5" placeholder="Несколько абзацев: где жил, чем занимался, что важно помнить."></textarea>
+          </label>
+          <label>Связанные истории
+            <select id="storyIds" multiple size="4"></select>
+          </label>
+          <label>Связанные медиа
+            <select id="mediaIds" multiple size="4"></select>
+          </label>
+          <div class="actions">
+            <button class="button" type="submit">Сохранить человека</button>
+            <button id="deletePersonButton" class="button danger" type="button">Удалить человека</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="storiesHeading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Шаг 3</p>
+          <h2 id="storiesHeading">Истории</h2>
+          <p class="hint">История — это воспоминание, эпизод или семейный рассказ. Её можно связать сразу с несколькими людьми и медиа.</p>
+        </div>
+        <button id="newStoryButton" class="button button-secondary" type="button">Добавить историю</button>
+      </div>
+      <div class="editor-columns">
+        <div>
+          <label for="storyPicker">Выбрать историю для редактирования</label>
+          <select id="storyPicker" size="6" aria-label="Выбрать историю для редактирования"></select>
+          <p class="hint">После выбора история откроется в форме справа.</p>
+        </div>
+        <form id="storyForm" class="stacked-form">
+          <input id="storyId" type="hidden">
+          <div class="form-grid two">
+            <label>Название
+              <input id="storyTitle" type="text" required placeholder="Например: Коробка со старыми фотографиями">
+            </label>
+            <label>Дата / период
+              <input id="storyDate" type="text">
+            </label>
+            <label>Автор воспоминания
+              <input id="storyAuthor" type="text">
+            </label>
+            <label>Люди в истории
+              <select id="storyPersonIds" multiple size="4"></select>
+            </label>
+          </div>
+          <label>Текст истории
+            <textarea id="storyText" rows="5" required placeholder="Запишите воспоминание живым текстом: что произошло, кто участвовал, почему это важно семье."></textarea>
+          </label>
+          <label>Медиа к истории
+            <select id="storyMediaIds" multiple size="4"></select>
+          </label>
+          <div class="actions">
+            <button class="button" type="submit">Сохранить историю</button>
+            <button id="deleteStoryButton" class="button danger" type="button">Удалить историю</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="mediaHeading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Шаг 4</p>
+          <h2 id="mediaHeading">Медиа</h2>
+          <p class="hint">Фото, аудио, видео и документы хранятся в единой папке <code>media/</code>. Выберите файл — редактор сам определит тип и путь.</p>
+        </div>
+        <div class="actions compact-actions">
+          <button id="openArchiveFolderButton" class="button button-secondary" type="button">Разрешить папку архива</button>
+          <button id="newMediaButton" class="button button-secondary" type="button">Добавить медиа</button>
+        </div>
+      </div>
+      <div class="editor-columns">
+        <div>
+          <label for="mediaPicker">Выбрать медиа для редактирования</label>
+          <select id="mediaPicker" size="6" aria-label="Выбрать медиа для редактирования"></select>
+          <p class="hint">После выбора запись медиа откроется в форме справа.</p>
+        </div>
+        <form id="mediaForm" class="stacked-form">
+          <input id="mediaId" type="hidden">
+          <div class="form-grid two">
+            <label>Название
+              <input id="mediaTitle" type="text" required placeholder="Например: Интервью с бабушкой">
+            </label>
+            <label>Тип
+              <select id="mediaType">
+                <option value="photo">Фото</option>
+                <option value="audio">Аудио</option>
+                <option value="video">Видео</option>
+                <option value="document">Документ</option>
+              </select>
+            </label>
+            <label>Относительный путь
+              <input id="mediaPath" type="text" placeholder="media/example.jpg" required aria-describedby="mediaPathHint">
+              <span id="mediaPathHint" class="field-hint">Лучше выбирать файл через поле ниже — путь заполнится автоматически.</span>
+            </label>
+            <label>Выбрать файл для media/
+              <input id="mediaFileInput" type="file" accept="image/*,audio/*,video/*,.pdf,.txt,.doc,.docx,.rtf">
+            </label>
+            <label>Люди на медиа
+              <select id="mediaPersonIds" multiple size="4"></select>
+            </label>
+          </div>
+          <p id="mediaFileHint" class="status-note" role="status" aria-live="polite">Можно выбрать файл: редактор определит тип и путь. В Chromium после разрешения папки архива файл будет скопирован в <code>media/</code>.</p>
+          <label>Связанные истории
+            <select id="mediaStoryIds" multiple size="4"></select>
+          </label>
+          <div class="actions">
+            <button class="button" type="submit">Сохранить медиа</button>
+            <button id="deleteMediaButton" class="button danger" type="button">Удалить медиа</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="importExportHeading">
+      <p class="eyebrow">Шаг 5</p>
+      <h2 id="importExportHeading">Импорт и экспорт JSON</h2>
+      <p class="hint">Редактор сохраняет черновик в браузере. Кнопка экспорта скачивает полноценный файл <code>archive.json</code>; его нужно положить рядом с <code>index.html</code> и <code>edit.html</code> в папке архива.</p>
+      <div class="actions">
+        <button id="exportButton" class="button" type="button">Скачать archive.json</button>
+        <label class="button button-secondary file-button">Импортировать JSON
+          <input id="importFile" type="file" accept="application/json,.json">
+        </label>
+      </div>
+      <details class="advanced-json">
+        <summary>Расширенно: посмотреть или вставить JSON вручную</summary>
+        <label>Текущий JSON для проверки и ручного копирования
+          <textarea id="jsonOutput" rows="12" spellcheck="false"></textarea>
+        </label>
+        <div class="actions">
+          <button id="loadFromTextareaButton" class="button button-secondary" type="button">Загрузить JSON из поля</button>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <script src="assets/js/archive-core.js"></script>
+  <script src="assets/js/editor.js"></script>
+</body>
+</html>

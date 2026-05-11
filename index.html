@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Семейный архив — просмотр</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Перейти к содержанию</a>
+  <header class="site-header">
+    <div>
+      <p class="eyebrow">Бережный локальный архив</p>
+      <h1 id="archiveTitle">Семейная память</h1>
+      <p class="lead">Древо, истории, фотографии и короткие воспоминания о людях семьи.</p>
+    </div>
+    <nav aria-label="Основная навигация">
+      <a class="button button-secondary" href="edit.html">Открыть редактор</a>
+    </nav>
+  </header>
+
+  <main id="main" class="layout">
+    <section class="panel hero-panel" aria-labelledby="treeHeading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Главный вид</p>
+          <h2 id="treeHeading">Древо предков</h2>
+        </div>
+        <label class="compact-field" for="rootSelect">Корневой человек
+          <select id="rootSelect"></select>
+        </label>
+      </div>
+      <div id="treeSummary" class="status-note" role="status"></div>
+      <div id="ancestorTree" class="ancestor-tree" aria-live="polite"></div>
+    </section>
+
+    <section class="panel people-panel" aria-labelledby="peopleHeading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Люди</p>
+          <h2 id="peopleHeading">Краткие карточки</h2>
+        </div>
+        <label class="search-field" for="peopleSearch">Поиск по ФИО, месту или воспоминанию
+          <input id="peopleSearch" type="search" autocomplete="off" placeholder="Например: Мария или Новосибирск">
+        </label>
+      </div>
+      <p class="hint">В списке показано только главное. Полная карточка раскрывается отдельно.</p>
+      <div id="peopleList" class="people-grid"></div>
+    </section>
+
+    <section class="panel detail-panel" aria-labelledby="detailHeading">
+      <h2 id="detailHeading" tabindex="-1">Полная карточка</h2>
+      <div id="personDetail" class="empty-state">Выберите человека в списке или дереве.</div>
+    </section>
+  </main>
+
+  <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-labelledby="lightboxTitle" hidden>
+    <div class="lightbox-backdrop" data-close-lightbox></div>
+    <div class="lightbox-content" tabindex="-1">
+      <button id="lightboxClose" class="button button-secondary" type="button">Закрыть фото</button>
+      <h2 id="lightboxTitle">Просмотр фотографии</h2>
+      <img id="lightboxImage" alt="">
+      <p id="lightboxCaption"></p>
+    </div>
+  </div>
+
+  <script src="assets/js/archive-core.js"></script>
+  <script src="assets/js/view.js"></script>
+</body>
+</html>
