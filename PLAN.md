@@ -384,6 +384,18 @@ MVP может быть разделён на два HTML-файла:
 - Media workflow production-pass: редактор выбирает файл, определяет тип, формирует путь `media/file-name.ext`; в Chromium через File System Access API может копировать файл в `media/` после разрешения папки архива.
 - Используется единая папка `media/`: меньше ручных решений для пользователя, а тип контента определяется скриптом по MIME type/расширению.
 
+## Editor redesign — approved scope
+
+Outcome: production-quality person-centred editor, no first-run wizard, numbered steps or prototype-only delivery. Preserve offline archive.json + media/, browser frontend, Windows and Android support and existing archives.
+
+Scope: family overview/search; person screen with required name only, optional biography/dates; add/create/select mother and father with automatic relationship; cycle/duplicate prevention; change tree root; direct single/batch attachment upload in person card and independent media library; folder import where supported with honest Android fallback; choose existing attachments/main photo; stories in person context; shared attachments; accessible focus, inline errors, explicit destructive actions. No global discard of unrelated forms. Drafts survive navigation/restart, failed save keeps inputs. Imports/exports and viewer remain functional.
+
+Boundaries: family-tree only. No real user data, unrelated projects, server/accounts/sync, broad storage permissions or private release-signing keys. Backup created at /home/assistent/.hermes/cache/scratch/family-editor-before.tar.gz. No migration/delete of user archives. Existing bridge extended compatibly. Release only after connected scenario checks; no claim NVDA/TalkBack verified without real evidence.
+
+Implementation slices: (1) shared frontend/editor and scenario tests; (2) native batch file/folder bridge with bounded copying/tests; (3) integration/browser/Electron QA and independent review; (4) Windows ZIP and Android APK packaging, source publication and verified release assets. Other desktop builds only as necessary to keep shared packaging coherent.
+
+Verification: npm test; native storage/adapter regressions; real browser/editor and isolated Electron scenarios (empty archive, name-only person, parents with existing/new choices, root, multi-file attachments and main photo, library unattached files, story, return/cancel, failed save/restart/draft, import/export). Android unit/lint/build and APK assets/signature; Windows ZIP entry/path checks. Keyboard/focus/accessible names checked; physical Windows/Android screen-reader evidence remains separately identified. Stop only for actual unavailable credentials or protected destructive actions.
+
 ## 15. Definition of Done для MVP
 
 MVP считается готовым, если:

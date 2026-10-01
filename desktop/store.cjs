@@ -56,6 +56,34 @@ async function copyBounded(source,target,limit=MAX_FILE,onBytes=()=>{}) {
 }
 class ArchiveStore {
  constructor(root) { this.root=path.resolve(root); }
+ async archiveIdentity() {
+  const root=await safeRoot(this.root,true),file=path.join(root,'.family-archive-identity');
+  // Publish a fully synced marker exclusively; concurrent readers never see a partial UUID.
+  try {await regularFile(file);} catch(error) {
+   if(error.code!=='ENOENT')throw error;
+   const temp=`${file}.${crypto.randomUUID()}.tmp`;
+   try {
+    await atomicWrite(temp,crypto.randomUUID());
+    try {await fs.link(temp,file);}catch(error){
+     if(['EPERM','ENOTSUP','EOPNOTSUPP','EXDEV'].includes(error.code)) {
+      // Electron serializes archive operations and holds a single-instance lock.
+      await fs.rename(temp,file);
+     }else if(error.code!=='EEXIST')throw error;
+    }
+    await syncDirectory(root);
+    await syncDirectory(path.dirname(root));
+   }finally{await fs.unlink(temp).catch(()=>{});}
+  }
+  const flags=require('node:fs').constants;
+  const handle=await fs.open(file,flags.O_RDONLY|(flags.O_NOFOLLOW||0));let uuid;
+  try {
+   const stat=await handle.stat();if(!stat.isFile()||stat.size!==36)throw new Error('Invalid archive identity marker.');
+   uuid=await handle.readFile('utf8');
+  }finally{await handle.close();}
+  if(!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(uuid))throw new Error('Invalid archive identity marker.');
+  // A copied folder is a different archive even when its hidden UUID was copied too.
+  return crypto.createHash('sha256').update(root).update('\0').update(uuid).digest('hex');
+ }
  async readArchive() {
   await safeRoot(this.root,true); const file=path.join(this.root,'archive.json');
   try { const st=await regularFile(file); if(st.size>MAX_JSON) throw new Error('JSON архива слишком большой.'); return archiveValue(JSON.parse(await fs.readFile(file,'utf8'))); }
@@ -81,7 +109,57 @@ class ArchiveStore {
  }
  async checkMedia(archive) { for(const item of archive.media) await this.resolveMedia(item.path); }
  async addMedia(source) {
-  const st=await regularFile(source); if(st.size>MAX_FILE) throw new Error('Медиафайл превышает 512 МБ.');
+  const result=await this.addMediaBatch([source]);
+  if(result.errors.length)throw new Error(result.errors[0].message);
+  return result.media[0];
+ }
+ async addMediaBatch(sources,{folder=false}={},limits={file:MAX_FILE,total:MAX_TOTAL,count:MAX_ENTRIES-1}) {
+  const result={media:[],errors:[]};
+  if(!sources.length)return result;
+  const report=(file,error)=>result.errors.push({name:path.basename(file),message:error.message||String(error)});
+  // Inventory includes unattached media: imported files must remain exportable.
+  let total=0,count=0,storageError;
+  try {
+   await safeRoot(this.root,true);
+   const existing=await this.listMedia();count=existing.length;
+   for(const relative of existing)total+=(await regularFile(await this.resolveMedia(relative))).size;
+   try{total+=(await regularFile(path.join(this.root,'archive.json'))).size;}catch(error){if(error.code!=='ENOENT')throw error;}
+  }catch(error){storageError=error;}
+  let visited=0;const seen=new Set();
+  const walk=async(source,depth)=>{
+   if(++visited>4000){if(visited===4001)report(source,new Error('Слишком много элементов в выбранной папке.'));return;}
+   try {
+    if(storageError)throw storageError;
+    if(depth>32)throw new Error('Слишком глубокая вложенность папок.');
+    source=path.resolve(source);
+    if(folder&&(source===this.root||source.startsWith(this.root+path.sep)))throw new Error('Папка текущего архива не импортируется.');
+    // Check ancestors as well as leaf: O_NOFOLLOW only protects the final component.
+    let current=path.parse(source).root;
+    for(const segment of source.slice(current.length).split(path.sep)){
+     current=path.join(current,segment);
+     if((await fs.lstat(current)).isSymbolicLink())throw new Error('Ссылки не поддерживаются.');
+    }
+    const st=await fs.lstat(source);
+    if(seen.has(source))return;seen.add(source);
+    if(st.isDirectory()){
+     if(!folder)throw new Error('Выберите обычный файл.');
+     const dir=await fs.opendir(source);
+     for await(const entry of dir){await walk(path.join(source,entry.name),depth+1);if(visited>4000)break;}
+     return;
+    }
+    if(!st.isFile())throw new Error('Специальные файлы не поддерживаются.');
+    if(!mediaType(source))throw new Error('Этот тип файла не поддерживается.');
+    if(st.size>limits.file)throw new Error('Медиафайл превышает допустимый размер.');
+    if(count>=limits.count||total+st.size>limits.total)throw new Error('Архив превышает допустимый размер или число файлов.');
+    const item=await this.copyMedia(source,Math.min(limits.file,limits.total-total),bytes=>{total+=bytes;});
+    count++;result.media.push(item);
+   }catch(error){report(source,error);}
+  };
+  for(const source of sources){await walk(source,0);if(visited>4000)break;}
+  return result;
+ }
+ async copyMedia(source,limit=MAX_FILE,onBytes=()=>{}) {
+  const st=await regularFile(source); if(st.size>limit) throw new Error('Медиафайл превышает допустимый размер.');
   const type=mediaType(source); if(!type) throw new Error('Этот тип файла не поддерживается.');
   await safeRoot(this.root,true); const dir=path.join(this.root,'media'); await fs.mkdir(dir,{recursive:true});
   const ds=await fs.lstat(dir); if(!ds.isDirectory() || ds.isSymbolicLink()) throw new Error('Недопустимая папка media.');
@@ -89,7 +167,18 @@ class ArchiveStore {
   const ext=path.extname(base), stem=path.basename(base,ext).replace(/^[.]+/,'')||'file';
   let name=`${stem}-${crypto.randomUUID().slice(0,12)}${ext}`;
   const temp=path.join(dir,`.${crypto.randomUUID()}.tmp`),target=path.join(dir,name);
-  try { await copyBounded(source,temp); await fs.rename(temp,target); await syncDirectory(dir); }
+  let published=false;
+  try {
+   await copyBounded(source,temp,limit,onBytes);
+   try {await fs.link(temp,target);}
+   catch(error){
+    if(!['EPERM','ENOTSUP','EOPNOTSUPP','EXDEV'].includes(error.code))throw error;
+    await fs.copyFile(temp,target,require('node:fs').constants.COPYFILE_EXCL);
+   }
+   published=true;
+   const fd=await fs.open(target,'r+');try{await fd.sync();}finally{await fd.close();}
+   await syncDirectory(dir);
+  }catch(error){if(published)await fs.unlink(target).catch(()=>{});throw error;}
   finally {await fs.unlink(temp).catch(()=>{});}
   return {path:`media/${name}`,type,title:path.basename(source,path.extname(source))};
  }
@@ -143,7 +232,7 @@ class ArchiveStore {
      zip.readEntry();
     })().catch(reject); }); zip.readEntry();
    });
-   const archive=await store.readArchive(); if(!archive) throw new Error('В ZIP отсутствует archive.json.'); await store.checkMedia(archive); return store;
+   const archive=await store.readArchive(); if(!archive) throw new Error('В ZIP отсутствует archive.json.'); await store.checkMedia(archive); await store.archiveIdentity(); return store;
   }catch(error){if(zip)zip.close();await fs.rm(root,{recursive:true,force:true});throw error;}
  }
  static async importJson(source,importsRoot) {
@@ -156,7 +245,7 @@ class ArchiveStore {
    await fs.mkdir(path.join(root,'media'),{recursive:true});
    const files=new Set(archive.media.map(x=>x.path));if(files.size>=MAX_ENTRIES)throw new Error('Слишком много файлов.');
    for(const relative of files) {await fs.mkdir(path.dirname(path.join(root,relative)),{recursive:true});await copyBounded(await from.resolveMedia(relative),path.join(root,relative),MAX_FILE,bytes=>{total+=bytes;if(total>MAX_TOTAL)throw new Error('Медиа превышают 1 ГБ.');});}
-   await store.writeArchive(archive); return store;
+   await store.writeArchive(archive); await store.archiveIdentity(); return store;
   }
   catch(error){await fs.rm(root,{recursive:true,force:true});throw error;}
  }

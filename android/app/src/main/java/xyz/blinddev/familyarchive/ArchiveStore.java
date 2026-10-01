@@ -41,7 +41,59 @@ final class ArchiveStore {
         if (!root.isDirectory() && !root.mkdirs()) throw new IOException("Cannot create private archive directory");
         File media = new File(root, "media");
         if (!media.isDirectory() && !media.mkdirs()) throw new IOException("Cannot create private media directory");
+        if (!root.getCanonicalFile().equals(root.getAbsoluteFile()) || !media.getCanonicalFile().equals(media.getAbsoluteFile()))
+            throw new IOException("Unsafe private archive directory");
         return root;
+    }
+
+    @android.annotation.SuppressLint("NewApi") // NIO branch executes only in host JVM tests, never on Android.
+    private static void syncDirectory(File directory) throws IOException {
+        // Android API 23 supports directory fsync via Os; host-JVM unit tests use NIO.
+        if ("Dalvik".equals(System.getProperty("java.vm.name"))) {
+            java.io.FileDescriptor fd = null;
+            try {
+                fd = android.system.Os.open(directory.getAbsolutePath(), android.system.OsConstants.O_RDONLY, 0);
+                if (!android.system.OsConstants.S_ISDIR(android.system.Os.fstat(fd).st_mode)) throw new IOException("Not an archive directory");
+                android.system.Os.fsync(fd);
+            } catch (android.system.ErrnoException error) { throw new IOException("Cannot sync archive directory", error); }
+            finally {
+                if (fd != null) try { android.system.Os.close(fd); }
+                catch (android.system.ErrnoException error) { throw new IOException("Cannot close archive directory", error); }
+            }
+        } else {
+            try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(directory.toPath(), java.nio.file.StandardOpenOption.READ)) { channel.force(true); }
+        }
+    }
+
+    private static final String IDENTITY_MARKER = ".family-archive-identity";
+
+    String archiveIdentity() throws IOException {
+        synchronized (ArchiveStore.class) {
+            String identity = identityIn(root());
+            syncDirectory(base);
+            return identity;
+        }
+    }
+
+    private static String identityIn(File directory) throws IOException {
+        File marker = new File(directory, IDENTITY_MARKER);
+        if (!marker.getCanonicalFile().equals(marker.getAbsoluteFile())) throw new IOException("Unsafe archive identity marker");
+        if (!marker.exists()) {
+            File temp = File.createTempFile(".identity-", ".tmp", directory);
+            try {
+                try (FileOutputStream out = new FileOutputStream(temp)) {
+                    out.write(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8));
+                    out.getFD().sync();
+                }
+                if (!temp.renameTo(marker)) throw new IOException("Cannot publish archive identity");
+                syncDirectory(directory);
+            } finally { if (temp.exists()) temp.delete(); }
+        }
+        if (!marker.isFile()) throw new IOException("Invalid archive identity marker");
+        String identity = new String(readBounded(new FileInputStream(marker), 36), StandardCharsets.UTF_8);
+        if (!identity.matches("[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}"))
+            throw new IOException("Invalid archive identity marker");
+        return identity;
     }
 
     JSONObject read() throws IOException, JSONException {
@@ -88,9 +140,44 @@ final class ArchiveStore {
         for (int i = 0; i < 10000; i++) {
             String candidate = i == 0 ? name : stem + "-" + i + ext;
             File file = new File(media, candidate);
+            if (!file.getCanonicalFile().equals(file.getAbsoluteFile())) throw new IOException("Unsafe media destination");
             if (!file.exists()) return file;
         }
         throw new IOException("Too many files with the same name");
+    }
+
+    File addMedia(String name, InputStream input) throws IOException {
+        return addMedia(name, input, MAX_ENTRY, MAX_TOTAL, MAX_ENTRIES - 1);
+    }
+
+    // Package-private budget overload lets unit tests exercise real streaming with tiny fixtures.
+    synchronized File addMedia(String name, InputStream input, long entryLimit, long totalLimit, int countLimit) throws IOException {
+        root();
+        java.util.Map<String, File> files = new java.util.LinkedHashMap<>();
+        collectMedia(new File(root, "media"), "media/", files);
+        long total = new File(root, "archive.json").length();
+        for (File file : files.values()) total += file.length();
+        if (files.size() >= countLimit || total > totalLimit) throw new IOException("Archive exceeds storage limit");
+        File destination = mediaDestination(name);
+        File temp = File.createTempFile("family-media-", ".incoming", base);
+        boolean reserved = false, committed = false;
+        try {
+            try (FileOutputStream out = new FileOutputStream(temp)) {
+                copyBounded(input, out, Math.min(entryLimit, totalLimit - total));
+                out.getFD().sync();
+            }
+            destination = mediaDestination(name);
+            // Reserve exclusively before publishing: never rename over someone else's attachment.
+            if (!destination.createNewFile()) throw new IOException("Media destination already exists");
+            reserved = true;
+            if (!temp.renameTo(destination)) throw new IOException("Cannot save selected media");
+            committed = true;
+            if (!destination.getCanonicalFile().equals(destination.getAbsoluteFile())) throw new IOException("Unsafe media destination");
+            return destination;
+        } finally {
+            if (temp.exists()) temp.delete();
+            if (reserved && !committed) destination.delete();
+        }
     }
 
     static String safeName(String name) throws IOException {
@@ -129,7 +216,49 @@ final class ArchiveStore {
 
     void importJson(InputStream input) throws IOException, JSONException {
         JSONObject archive = parse(readBounded(input, MAX_JSON));
-        write(archive); // JSON-only import leaves existing media intact.
+        root();
+        checkMediaFiles(archive, root);
+        // Keep existing (including unattached) media, but replace the storage generation atomically.
+        File staged = new File(base, "family-archive-stage-" + UUID.randomUUID());
+        if (!new File(staged, "media").mkdirs()) throw new IOException("Could not stage archive");
+        boolean committed = false;
+        try {
+            java.util.Map<String, File> files = new java.util.LinkedHashMap<>();
+            collectMedia(new File(root, "media"), "media/", files);
+            long total = archive.toString().getBytes(StandardCharsets.UTF_8).length;
+            for (java.util.Map.Entry<String, File> entry : files.entrySet()) {
+                File destination = new File(staged, entry.getKey());
+                if (!destination.getParentFile().isDirectory() && !destination.getParentFile().mkdirs()) throw new IOException("Cannot stage media");
+                try (FileInputStream in = new FileInputStream(entry.getValue()); FileOutputStream out = new FileOutputStream(destination)) {
+                    total += copyBounded(in, out, Math.min(MAX_ENTRY, MAX_TOTAL - total));
+                    out.getFD().sync();
+                }
+            }
+            atomicJson(staged, archive);
+            identityIn(staged);
+            replaceRoot(staged);
+            committed = true;
+        } finally { if (!committed) deleteTree(staged); }
+    }
+
+    private void replaceRoot(File staged) throws IOException {
+        root(); // Recover an interrupted earlier swap before replacing its backup.
+        File backup = new File(base, "family-archive-backup");
+        if (backup.exists()) deleteTree(backup);
+        syncDirectory(staged);
+        if (!root.renameTo(backup)) throw new IOException("Cannot back up existing archive");
+        boolean published = false;
+        try {
+            syncDirectory(base);
+            if (!staged.renameTo(root)) throw new IOException("Archive replacement failed");
+            published = true;
+            syncDirectory(base);
+        } catch (IOException failure) {
+            if (published && !root.renameTo(staged)) throw new IOException("Cannot roll back archive replacement", failure);
+            if (!backup.renameTo(root)) throw new IOException("Archive replacement failed; backup retained at " + backup, failure);
+            syncDirectory(base);
+            throw failure;
+        }
     }
 
     void importZip(InputStream input) throws IOException, JSONException {
@@ -182,13 +311,8 @@ final class ArchiveStore {
             }
             File media = new File(staged, "media");
             if (!media.isDirectory() && !media.mkdir()) throw new IOException("Cannot stage media folder");
-            File backup = new File(base, "family-archive-backup");
-            if (backup.exists()) deleteTree(backup);
-            if (root.exists() && !root.renameTo(backup)) throw new IOException("Cannot back up existing archive");
-            if (!staged.renameTo(root)) {
-                if (backup.exists() && !backup.renameTo(root)) throw new IOException("Archive replacement failed; backup retained at " + backup);
-                throw new IOException("Archive replacement failed; previous archive restored");
-            }
+            identityIn(staged); // New local generation; never imported from portable contents.
+            replaceRoot(staged);
             committed = true;
             // Keep the previous complete archive as a recovery copy until the next successful import.
         } finally {

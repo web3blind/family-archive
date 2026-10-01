@@ -27,6 +27,14 @@
 
   global.FamilyArchiveNative = {
     platform: 'android',
+    async archiveIdentity() {
+      await ready;
+      const result = await plugin.archiveIdentity();
+      if (!result || typeof result.identity !== 'string' || !result.identity.trim()) {
+        throw new Error('Android archive identity is unavailable');
+      }
+      return result.identity;
+    },
     async readArchive() {
       await ready;
       const result = await plugin.readArchive();
@@ -45,6 +53,12 @@
       await ready;
       const result = await plugin.pickMedia();
       return result.media || null;
+    },
+    async pickMediaBatch(options = {}) {
+      await ready;
+      const result = await plugin.pickMediaBatch({ folder: options.folder === true });
+      if (!result || result.cancelled) return null;
+      return { media: result.media || [], errors: result.errors || [] };
     },
     mediaUrl(path) {
       if (!rootUri || !validMediaPath(path)) return '';

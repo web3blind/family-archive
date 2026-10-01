@@ -1,10 +1,12 @@
 {
   "name": "family-archive",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Offline portable family archive for desktop and Android",
   "private": true,
   "main": "desktop/main.cjs",
-  "engines": { "node": ">=22.12.0 <25" },
+  "engines": {
+    "node": ">=22.12.0 <25"
+  },
   "scripts": {
     "test": "node tests/archive-core.test.cjs && node --test tests/*.test.cjs",
     "desktop:start": "electron .",
@@ -31,10 +33,34 @@
     "productName": "Family Archive",
     "compression": "normal",
     "artifactName": "family-archive-${os}-${arch}.${ext}",
-    "directories": { "output": "dist-desktop" },
-    "files": ["desktop/**/*", "assets/**/*", "index.html", "edit.html", "package.json", "!node_modules/@capacitor/**/*"],
-    "linux": { "target": ["tar.gz"], "category": "Utility" },
-    "win": { "target": ["zip"], "signAndEditExecutable": false },
-    "mac": { "target": ["zip"], "category": "public.app-category.lifestyle" }
+    "directories": {
+      "output": "dist-desktop"
+    },
+    "files": [
+      "desktop/**/*",
+      "assets/**/*",
+      "index.html",
+      "edit.html",
+      "package.json",
+      "!node_modules/@capacitor/**/*"
+    ],
+    "linux": {
+      "target": [
+        "tar.gz"
+      ],
+      "category": "Utility"
+    },
+    "win": {
+      "target": [
+        "zip"
+      ],
+      "signAndEditExecutable": false
+    },
+    "mac": {
+      "target": [
+        "zip"
+      ],
+      "category": "public.app-category.lifestyle"
+    }
   }
 }

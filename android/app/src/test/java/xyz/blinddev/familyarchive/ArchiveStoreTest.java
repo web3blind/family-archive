@@ -12,6 +12,58 @@ import java.util.zip.ZipEntry;
 import org.json.JSONObject;
 
 public class ArchiveStoreTest {
+    @Test public void identityPersistsAcrossWritesRestartsAndBackupRecovery() throws Exception {
+        File dir = Files.createTempDirectory("archive-identity-test").toFile();
+        ArchiveStore store = new ArchiveStore(dir);
+        String identity = store.archiveIdentity();
+        assertFalse(identity.isEmpty());
+        store.write(archive("saved", "[]"));
+        assertEquals(identity, store.archiveIdentity());
+        assertEquals(identity, new ArchiveStore(dir).archiveIdentity());
+        assertNotEquals(identity, new ArchiveStore(Files.createTempDirectory("other-archive").toFile()).archiveIdentity());
+        assertTrue(store.root().renameTo(new File(dir, "family-archive-backup")));
+        assertEquals(identity, new ArchiveStore(dir).archiveIdentity());
+    }
+
+    @Test public void identityChangesOnlyOnSuccessfulImportsAndNeverLeaksInZip() throws Exception {
+        ArchiveStore store = new ArchiveStore(Files.createTempDirectory("archive-generation-test").toFile());
+        String old = store.archiveIdentity();
+        store.write(archive("before", "[]"));
+        File image = new File(store.root(), "media/photo.jpg");
+        Files.write(image.toPath(), new byte[] {1,2,3});
+        for (byte[] invalid : new byte[][] {
+            zip("archive.json", archive("bad", "[]").toString(), ".family-archive-identity", old),
+            zip("archive.json", archive("bad", "[{\"id\":\"missing\",\"path\":\"media/missing.jpg\"}]").toString())
+        }) {
+            try { store.importZip(new ByteArrayInputStream(invalid)); fail("Accepted bad import"); }
+            catch (IOException expected) { assertEquals(old, store.archiveIdentity()); }
+        }
+        try { store.importJson(new ByteArrayInputStream("bad json".getBytes())); fail("Accepted bad JSON"); }
+        catch (org.json.JSONException expected) { assertEquals(old, store.archiveIdentity()); }
+        store.importJson(new ByteArrayInputStream(archive("new", "[]").toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        String jsonGeneration = store.archiveIdentity();
+        assertNotEquals(old, jsonGeneration);
+        assertArrayEquals(new byte[] {1,2,3}, Files.readAllBytes(image.toPath()));
+        assertEquals(jsonGeneration, new ArchiveStore(store.root().getParentFile()).archiveIdentity());
+        ByteArrayOutputStream output = new ByteArrayOutputStream(); store.exportZip(output);
+        try (java.util.zip.ZipInputStream in = new java.util.zip.ZipInputStream(new ByteArrayInputStream(output.toByteArray()))) {
+            ZipEntry entry; while ((entry = in.getNextEntry()) != null) assertFalse(entry.getName().contains("identity"));
+        }
+        store.importZip(new ByteArrayInputStream(output.toByteArray()));
+        String zipGeneration = store.archiveIdentity(); assertNotEquals(jsonGeneration, zipGeneration);
+        store.importZip(new ByteArrayInputStream(output.toByteArray())); assertNotEquals(zipGeneration, store.archiveIdentity());
+    }
+
+    @Test public void identityFailsClosedForCorruptOrLinkedMarker() throws Exception {
+        ArchiveStore store = new ArchiveStore(Files.createTempDirectory("archive-marker-test").toFile());
+        File marker = new File(store.root(), ".family-archive-identity");
+        Files.write(marker.toPath(), "broken".getBytes());
+        try { store.archiveIdentity(); fail("Accepted corrupt marker"); } catch (IOException expected) { }
+        assertTrue(marker.delete());
+        File external = new File(store.root().getParentFile(), "external"); Files.write(external.toPath(), "12345678-1234-4123-8123-123456789abc".getBytes());
+        Files.createSymbolicLink(marker.toPath(), external.toPath());
+        try { store.archiveIdentity(); fail("Accepted linked marker"); } catch (IOException expected) { }
+    }
     @Test public void rejectsZipTraversalAndUnknownContents() {
         assertFalse(ArchiveStore.validMediaName("../x.jpg"));
         assertFalse(ArchiveStore.validMediaName("x/y.jpg"));

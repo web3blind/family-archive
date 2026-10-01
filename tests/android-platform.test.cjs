@@ -11,6 +11,18 @@ function mount(capacitor) {
   return window;
 }
 
+test('Android identity is read afresh, nonempty, and fails closed on native errors', async () => {
+ let result={identity:'generation-one'};
+ const adapter=mount({getPlatform:()=> 'android',registerPlugin:()=>({
+  getRootUri:async()=>({rootUri:'file:///root/'}),archiveIdentity:async()=>{if(result instanceof Error)throw result;return result;}
+ })}).FamilyArchiveNative;
+ assert.equal(await adapter.archiveIdentity(),'generation-one');result={identity:'generation-two'};assert.equal(await adapter.archiveIdentity(),'generation-two');
+ for(const invalid of [null,{}, {identity:''},{identity:'   '},{identity:1}]){result=invalid;await assert.rejects(adapter.archiveIdentity(),/identity is unavailable/);}
+ result=new Error('cannot read marker');await assert.rejects(adapter.archiveIdentity(),/cannot read marker/);
+ const unavailable=mount({getPlatform:()=> 'android',registerPlugin:()=>({getRootUri:async()=>{throw new Error('storage inaccessible');}})}).FamilyArchiveNative;
+ await assert.rejects(unavailable.archiveIdentity(),/storage inaccessible/);
+});
+
 test('ordinary browser does not acquire a native adapter', () => {
   assert.equal(mount().FamilyArchiveNative, undefined);
   assert.equal(mount({ getPlatform: () => 'web' }).FamilyArchiveNative, undefined);
@@ -57,6 +69,20 @@ test('Android picker passes through the nested media result and handles cancel',
   assert.equal((await adapter.pickMedia()).path, item.path);
   response = { cancelled: true };
   assert.equal(await adapter.pickMedia(), null);
+});
+
+test('Android batch preserves partial failures, folder intent, cancellation and rejected storage', async () => {
+  const item = { path: 'media/letter.pdf', title: 'letter.pdf', type: 'document' };
+  let response = { media: [item], errors: [{ name: 'bad.exe', message: 'Unsupported' }] }, received;
+  const adapter = mount({ getPlatform: () => 'android', registerPlugin: () => ({
+    getRootUri: async () => ({ rootUri: 'file:///root/' }),
+    pickMediaBatch: async options => { received = options; if (response instanceof Error) throw response; return response; }
+  }) }).FamilyArchiveNative;
+  let result = await adapter.pickMediaBatch({ folder: true });
+  assert.equal(received.folder, true); assert.equal(result.media[0], item); assert.equal(result.errors[0].name, 'bad.exe');
+  await adapter.pickMediaBatch(); assert.equal(received.folder, false);
+  response = { cancelled: true }; assert.equal(await adapter.pickMediaBatch(), null);
+  response = new Error('storage unavailable'); await assert.rejects(adapter.pickMediaBatch(), /storage unavailable/);
 });
 
 test('cancel is null and initialization failure rejects instead of silently substituting bundled archive', async () => {
