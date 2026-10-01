@@ -1,0 +1,696 @@
+[
+  {
+    "label": "minimal valid v1",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": []
+    }
+  },
+  {
+    "label": "legacy missing optional version and collections",
+    "valid": true,
+    "archive": {
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ]
+    }
+  },
+  {
+    "label": "Unicode nested media with punctuation",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "media/Семья/Портрет (1954), 2.jpg"
+        }
+      ]
+    }
+  },
+  {
+    "label": "portable extension svg",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "media/file.svg"
+        }
+      ]
+    }
+  },
+  {
+    "label": "portable extension avif",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "media/file.avif"
+        }
+      ]
+    }
+  },
+  {
+    "label": "portable extension heic",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "media/file.heic"
+        }
+      ]
+    }
+  },
+  {
+    "label": "portable extension heif",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "media/file.heif"
+        }
+      ]
+    }
+  },
+  {
+    "label": "portable extension aac",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "media/file.aac"
+        }
+      ]
+    }
+  },
+  {
+    "label": "portable extension opus",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "media/file.opus"
+        }
+      ]
+    }
+  },
+  {
+    "label": "portable extension avi",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "media/file.avi"
+        }
+      ]
+    }
+  },
+  {
+    "label": "portable extension xlsx",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "media/file.xlsx"
+        }
+      ]
+    }
+  },
+  {
+    "label": "portable extension csv",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "media/file.csv"
+        }
+      ]
+    }
+  },
+  {
+    "label": "unknown version",
+    "valid": false,
+    "archive": {
+      "version": 2,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": []
+    }
+  },
+  {
+    "label": "string version",
+    "valid": false,
+    "archive": {
+      "version": "1",
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": []
+    }
+  },
+  {
+    "label": "title wrong type",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": 5,
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": []
+    }
+  },
+  {
+    "label": "duplicate person",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        },
+        {
+          "id": "p1"
+        }
+      ],
+      "stories": [],
+      "media": []
+    }
+  },
+  {
+    "label": "invalid ID type",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": 42,
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": []
+    }
+  },
+  {
+    "label": "invalid text type",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник",
+          "bio": 42
+        }
+      ],
+      "stories": [],
+      "media": []
+    }
+  },
+  {
+    "label": "invalid array",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": {},
+      "media": []
+    }
+  },
+  {
+    "label": "unknown parent",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник",
+          "motherId": "unknown"
+        }
+      ],
+      "stories": [],
+      "media": []
+    }
+  },
+  {
+    "label": "self parent",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник",
+          "fatherId": "p1"
+        }
+      ],
+      "stories": [],
+      "media": []
+    }
+  },
+  {
+    "label": "two person cycle",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник",
+          "motherId": "p2"
+        },
+        {
+          "id": "p2",
+          "motherId": "p1"
+        }
+      ],
+      "stories": [],
+      "media": []
+    }
+  },
+  {
+    "label": "unknown root",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "unknown",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": []
+    }
+  },
+  {
+    "label": "unknown story ref",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник",
+          "storyIds": [
+            "unknown"
+          ]
+        }
+      ],
+      "stories": [],
+      "media": []
+    }
+  },
+  {
+    "label": "duplicate links",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник",
+          "storyIds": [
+            "s1",
+            "s1"
+          ]
+        }
+      ],
+      "stories": [
+        {
+          "id": "s1"
+        }
+      ],
+      "media": []
+    }
+  },
+  {
+    "label": "unknown media ref",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [
+        {
+          "id": "s1",
+          "mediaIds": [
+            "unknown"
+          ]
+        }
+      ],
+      "media": []
+    }
+  },
+  {
+    "label": "invalid link type",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник",
+          "mediaIds": [
+            42
+          ]
+        }
+      ],
+      "stories": [],
+      "media": []
+    }
+  },
+  {
+    "label": "non-photo primary media",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник",
+          "primaryMediaId": "m1"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "type": "audio",
+          "path": "media/file.mp3"
+        }
+      ]
+    }
+  },
+  {
+    "label": "unsafe path media/../a.jpg",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "media/../a.jpg"
+        }
+      ]
+    }
+  },
+  {
+    "label": "unsafe path media/.hidden.jpg",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "media/.hidden.jpg"
+        }
+      ]
+    }
+  },
+  {
+    "label": "unsafe path media/a//b.jpg",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "media/a//b.jpg"
+        }
+      ]
+    }
+  },
+  {
+    "label": "unsafe path media/a.html",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "media/a.html"
+        }
+      ]
+    }
+  },
+  {
+    "label": "unsafe path https://x/a.jpg",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "https://x/a.jpg"
+        }
+      ]
+    }
+  },
+  {
+    "label": "unsafe path media/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "title": "Проверка",
+      "rootPersonId": "p1",
+      "people": [
+        {
+          "id": "p1",
+          "fullName": "Родственник"
+        }
+      ],
+      "stories": [],
+      "media": [
+        {
+          "id": "m1",
+          "path": "media/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg"
+        }
+      ]
+    }
+  }
+]

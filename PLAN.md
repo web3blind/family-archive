@@ -1,5 +1,21 @@
 # PLAN.md — Семейное древо
 
+## Native applications — approved scope (2026-09-30)
+
+Status: implementation and five local 0.2.0 test builds are prepared. See TESTING.md for actual executed checks and remaining device/OS acceptance. Android/TalkBack and Windows/macOS/NVDA runtime acceptance is NOT claimed. No public release or push.
+
+- Outcome: audit and improve the existing archive; desktop Windows/Linux/macOS and Android apps with native media selection, durable saving, full archive import/export and existing JSON compatibility.
+- Architecture: retain HTML/CSS/JS and portable archive.json + media/. Electron desktop follows books-selection patterns (reference only); Capacitor Android uses a narrow native plugin for private storage and system file pickers. No backend/account/cloud sync/AI features.
+- Boundaries: only family-tree repository; books-selection read-only. No production deployment, paid infrastructure, personal family fixtures or signing credentials. No main-host Android emulation.
+- Backup: verified tar.gz of entire original repository under Hermes scratch before edits. User data archive.json and media must not be overwritten by fixtures.
+- Shared bridge: window.FamilyArchiveNative exposes platform, readArchive(), writeArchive(archive), pickMedia(), mediaUrl(path), openArchive(), importArchive(), exportArchive(). readArchive resolves JSON object/null; writeArchive resolves after durable write; pickMedia resolves {path,type,title} or null (already copied safely); mediaUrl synchronous; archive picker/import resolves JSON object/null; export resolves status/null. Frontend must report durable save failures, serialize writes and preserve browser-only mode. Desktop API comes from isolated preload; Android adapter uses Capacitor plugin FamilyArchive.
+- Audit roles: Engineering/security/data integrity; UX/accessibility/portability. Prioritize malformed imports, unsafe paths/HTML, overwrite collisions, stale localStorage, failed writes, focus and small-screen controls.
+- Stages: 1 audit+core fixes; 2 native adapters and archive/media controls; 3 desktop packaging and Android project; 4 connected flows/tests/builds; 5 independent review, fix deltas, document precise verification and remaining platform limits.
+- Verification: Node behavioral regression tests, real Chromium frontend smoke, actual Electron Linux launch and filesystem roundtrip, Linux/Windows build where available, Android APK compilation with official SDK if available; macOS build/runtime require macOS runner. Never conflate packaging, mocked bridge tests, structural accessibility and actual screen-reader/device execution.
+- Stop conditions: paid testing infrastructure, app-store/public release, signing/credential changes, destructive user-data operations or missing platform-specific execution resources. Complete safe independent parts before reporting a concrete limitation.
+- Status: implementation in progress; no platform claimed complete until its evidence is collected.
+
+
 ## 1. Идея проекта
 
 **Семейное древо** — переносимый семейный цифровой архив без обязательного сервера, Node.js, базы данных и централизованного сервиса.

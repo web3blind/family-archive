@@ -39,4 +39,23 @@ const parsed = core.parseArchiveJson(JSON.stringify({ title: 'Imported', people:
 assert.equal(parsed.title, 'Imported');
 assert.equal(parsed.rootPersonId, 'p1');
 
+const invalid = [
+  null, [], { version: 2 }, { people: {} },
+  { people: [{ id: 'x' }, { id: 'x' }] },
+  { people: [{ id: 'x', motherId: 'missing' }] },
+  { people: [{ id: 'x', motherId: 'x' }] },
+  { people: [{ id: 'x', motherId: 'y' }, { id: 'y', fatherId: 'x' }] },
+  { rootPersonId: 'missing' },
+  { stories: [{ id: 's', personIds: ['missing'] }] },
+  { media: [{ id: 'm', type: 'photo', path: '../outside' }] },
+  { media: [{ id: 'm', type: 'photo', path: 'media/%2e%2e/evil.jpg' }] },
+  { media: [{ id: 'm', type: 'photo', path: 'media/evil?x=.jpg' }] },
+  { media: [{ id: 'm', type: 'photo', path: 'media/evil\\x.jpg' }] }
+];
+for (const value of invalid) assert.throws(() => core.ensureArchiveShape(value));
+assert.equal(core.validMediaPath('media/семейное фото 1.jpg'), true);
+assert.equal(core.mediaUrl('media/семейное фото 1.jpg'), 'media/%D1%81%D0%B5%D0%BC%D0%B5%D0%B9%D0%BD%D0%BE%D0%B5%20%D1%84%D0%BE%D1%82%D0%BE%201.jpg');
+assert.equal(core.mediaUrl('javascript:alert(1)'), null);
+assert.equal(core.ensureArchiveShape({ people: [{ id: 'x' }], media: [] }).people[0].rememberFor, '');
+
 console.log('archive-core tests passed');

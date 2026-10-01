@@ -12,7 +12,7 @@
     <div>
       <p class="eyebrow">Редактор данных</p>
       <h1>Заполнение семейного архива</h1>
-      <p class="lead">Добавляйте людей, связи, истории и медиа. Данные сохраняются в браузере и экспортируются в JSON.</p>
+      <p class="lead">Добавляйте людей, связи, истории и медиа. Сохраняйте и экспортируйте семейный архив.</p>
     </div>
     <nav aria-label="Основная навигация">
       <a class="button button-secondary" href="index.html">Перейти к просмотру</a>
@@ -23,7 +23,7 @@
     <section class="panel editor-start" aria-labelledby="editorStartHeading">
       <p class="eyebrow">Как заполнять</p>
       <h2 id="editorStartHeading">Идите по шагам</h2>
-      <p class="hint">Сначала настройте архив, затем добавьте людей, истории и медиа. В конце скачайте обновлённый <code>archive.json</code>.</p>
+      <p class="hint">Сначала настройте архив, затем добавьте людей, истории и медиа. В конце экспортируйте архив.</p>
       <nav class="step-nav" aria-label="Шаги редактора">
         <a href="#archiveSettingsHeading"><span>1</span> Архив</a>
         <a href="#personFormHeading"><span>2</span> Люди</a>
@@ -36,7 +36,7 @@
     <section class="panel" aria-labelledby="archiveSettingsHeading">
       <p class="eyebrow">Шаг 1</p>
       <h2 id="archiveSettingsHeading">Архив</h2>
-      <p class="hint">Название видно в режиме просмотра. Корневой человек — тот, от кого строится древо предков.
+      <p class="hint">Название видно в режиме просмотра. Корневой человек — тот, от кого строится древо предков.</p>
       <div class="form-grid two">
         <label>Название архива
           <input id="archiveTitleInput" type="text">
@@ -47,7 +47,7 @@
       </div>
       <div class="actions">
         <button id="saveArchiveButton" class="button" type="button">Сохранить в браузере</button>
-        <button id="resetDemoButton" class="button button-secondary" type="button">Вернуть демо-данные</button>
+        <button id="resetDemoButton" class="button button-secondary" type="button">Очистить архив</button>
       </div>
       <p id="editorStatus" class="status-note" role="status" aria-live="polite"></p>
     </section>
@@ -171,6 +171,7 @@
         </div>
         <div class="actions compact-actions">
           <button id="openArchiveFolderButton" class="button button-secondary" type="button">Разрешить папку архива</button>
+          <button id="nativePickMediaButton" class="button button-secondary native-only" type="button">Выбрать файл на устройстве</button>
           <button id="newMediaButton" class="button button-secondary" type="button">Добавить медиа</button>
         </div>
       </div>
@@ -194,11 +195,11 @@
                 <option value="document">Документ</option>
               </select>
             </label>
-            <label>Относительный путь
+            <label class="browser-only">Относительный путь
               <input id="mediaPath" type="text" placeholder="media/example.jpg" required aria-describedby="mediaPathHint">
               <span id="mediaPathHint" class="field-hint">Лучше выбирать файл через поле ниже — путь заполнится автоматически.</span>
             </label>
-            <label>Выбрать файл для media/
+            <label class="browser-only">Выбрать файл для media/
               <input id="mediaFileInput" type="file" accept="image/*,audio/*,video/*,.pdf,.txt,.doc,.docx,.rtf">
             </label>
             <label>Люди на медиа
@@ -223,11 +224,13 @@
       <p class="hint">Редактор сохраняет черновик в браузере. Кнопка экспорта скачивает полноценный файл <code>archive.json</code>; его нужно положить рядом с <code>index.html</code> и <code>edit.html</code> в папке архива.</p>
       <div class="actions">
         <button id="exportButton" class="button" type="button">Скачать archive.json</button>
-        <label class="button button-secondary file-button">Импортировать JSON
+        <button id="nativeOpenArchiveButton" class="button button-secondary native-only" type="button">Открыть полный архив</button>
+        <button id="nativeImportArchiveButton" class="button button-secondary native-only" type="button">Импортировать полный архив</button>
+        <label class="button button-secondary file-button browser-only">Импортировать JSON
           <input id="importFile" type="file" accept="application/json,.json">
         </label>
       </div>
-      <details class="advanced-json">
+      <details class="advanced-json browser-only">
         <summary>Расширенно: посмотреть или вставить JSON вручную</summary>
         <label>Текущий JSON для проверки и ручного копирования
           <textarea id="jsonOutput" rows="12" spellcheck="false"></textarea>
@@ -239,6 +242,7 @@
     </section>
   </main>
 
+  <script src="assets/js/platform.js"></script>
   <script src="assets/js/archive-core.js"></script>
   <script src="assets/js/editor.js"></script>
 </body>

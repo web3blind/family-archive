@@ -1,6 +1,11 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const core = window.FamilyArchive;
-  let archive = await core.loadArchive();
+  let archive;
+  try { archive = await core.loadArchive(); }
+  catch (error) {
+    document.getElementById('treeSummary').textContent = `Не удалось открыть архив: ${error.message}`;
+    return;
+  }
   let selectedPersonId = archive.rootPersonId || (archive.people[0] && archive.people[0].id);
   let lastLightboxTrigger = null;
 
@@ -42,11 +47,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     els.peopleList.innerHTML = filtered.map((person) => {
       const photo = core.findPrimaryPhoto(person, mediaMap);
-      const img = photo ? `<img class="portrait" src="${escapeHtml(photo.path)}" alt="${escapeHtml(photo.title || `Фото: ${person.fullName}`)}">` : '<div class="portrait" role="img" aria-label="Фото пока не добавлено"></div>';
+      const photoUrl = photo && core.mediaUrl(photo.path);
+      const img = photoUrl ? `<img class="portrait" src="${escapeHtml(photoUrl)}" alt="${escapeHtml(photo.title || `Фото: ${person.fullName}`)}">` : '<div class="portrait" role="img" aria-label="Фото пока не добавлено"></div>';
       return `<button class="person-card" type="button" data-person-id="${escapeHtml(person.id)}" aria-pressed="${person.id === selectedPersonId}" aria-label="Открыть карточку: ${escapeHtml(person.fullName)}">
         ${img}
         <span>
-          <h3>${escapeHtml(person.fullName || 'Без имени')}</h3>
+          <span class="card-name">${escapeHtml(person.fullName || 'Без имени')}</span>
           <span class="meta">${escapeHtml([person.place, person.country].filter(Boolean).join(', ') || 'Место не указано')}</span>
           <span class="remember">${escapeHtml(person.rememberFor || 'Воспоминание пока не заполнено')}</span>
         </span>
@@ -81,6 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mediaMap = core.byId(archive.media);
     const photo = core.findPrimaryPhoto(person, mediaMap);
     const stories = core.getPersonStories(person, archive.stories);
+    const photoUrl = photo && core.mediaUrl(photo.path);
     const media = core.getPersonMedia(person, archive.media);
     const mother = peopleMap.get(person.motherId);
     const father = peopleMap.get(person.fatherId);
@@ -88,7 +95,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     els.personDetail.innerHTML = `<article class="detail-card" aria-labelledby="detailName">
       <div class="detail-header">
-        ${photo ? `<button class="media-open" type="button" data-media-id="${escapeHtml(photo.id)}" aria-label="Открыть главное фото: ${escapeHtml(photo.title)}"><img src="${escapeHtml(photo.path)}" alt="${escapeHtml(photo.title || `Фото: ${person.fullName}`)}"></button>` : '<div class="empty-state">Главное фото пока не добавлено.</div>'}
+        ${photoUrl ? `<button class="media-open" type="button" data-media-id="${escapeHtml(photo.id)}" aria-label="Открыть главное фото: ${escapeHtml(photo.title)}"><img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(photo.title || `Фото: ${person.fullName}`)}"></button>` : '<div class="empty-state">Главное фото пока не добавлено.</div>'}
         <div>
           <h3 id="detailName">${escapeHtml(person.fullName || 'Без имени')}</h3>
           <p class="remember">${escapeHtml(person.rememberFor || 'Чем запомнился семье — пока не заполнено.')}</p>
@@ -115,7 +122,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!media.length) return '<p class="empty-state">Медиа пока не связано с этим человеком.</p>';
     return `<div class="media-grid">${media.map((item) => {
       const title = escapeHtml(item.title || item.path || 'Медиа');
-      const path = escapeHtml(item.path);
+      const safeUrl = core.mediaUrl(item.path);
+      const path = safeUrl && escapeHtml(safeUrl);
+      if (!path) return `<div class="media-card"><strong>${title}</strong><p class="media-error">Небезопасный или недоступный путь к файлу.</p></div>`;
       if (item.type === 'photo') {
         return `<figure class="media-card"><button type="button" data-media-id="${escapeHtml(item.id)}" class="media-open" aria-label="Открыть фото: ${title}"><img src="${path}" alt="${title}" data-media-path="${path}"></button><figcaption>${title}</figcaption><p class="media-error" role="status" hidden></p></figure>`;
       }
@@ -125,14 +134,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (item.type === 'video') {
         return `<figure class="media-card"><figcaption><strong>${title}</strong></figcaption><video controls preload="metadata" src="${path}" data-media-path="${path}">Ваш браузер не поддерживает видео. <a href="${path}">Скачать видео</a>.</video><p class="media-error" role="status" hidden></p><p class="meta">video · ${path}</p></figure>`;
       }
-      return `<div class="media-card"><strong>${title}</strong><p class="meta">${escapeHtml(item.type)} · ${path}</p><a href="${path}">Открыть файл</a></div>`;
+      return `<div class="media-card"><strong>${title}</strong><p class="meta">${escapeHtml(item.type)} · ${path}</p><a href="${path}" data-document-path="${escapeHtml(item.path)}">Открыть файл</a><p class="media-error" role="status" hidden></p></div>`;
     }).join('')}</div>`;
   }
 
   function selectPerson(personId, focusDetail = false) {
     if (!archive.people.some((person) => person.id === personId)) return;
     selectedPersonId = personId;
-    archive.rootPersonId = personId;
     renderAll();
     if (focusDetail) {
       document.getElementById('detailHeading').focus?.();
@@ -142,9 +150,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function openLightbox(mediaId, trigger) {
     const item = archive.media.find((media) => media.id === mediaId);
-    if (!item) return;
+    const url = item && item.type === 'photo' && core.mediaUrl(item.path);
+    if (!url) return;
     lastLightboxTrigger = trigger || document.activeElement;
-    els.lightboxImage.src = item.path;
+    els.lightboxImage.src = url;
     els.lightboxImage.alt = item.title || 'Семейная фотография';
     els.lightboxCaption.textContent = `${item.title || 'Фотография'} — ${item.path}`;
     els.lightbox.hidden = false;
@@ -176,9 +185,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderDetail();
   }
 
-  els.rootSelect.addEventListener('change', () => selectPerson(els.rootSelect.value));
+  els.rootSelect.addEventListener('change', () => { selectPerson(els.rootSelect.value); els.rootSelect.focus(); });
   els.peopleSearch.addEventListener('input', renderPeopleList);
   document.addEventListener('click', (event) => {
+    const documentLink = event.target.closest('[data-document-path]');
+    if (documentLink && window.FamilyArchiveNative?.openMedia) {
+      event.preventDefault();
+      const status = documentLink.closest('.media-card').querySelector('.media-error');
+      window.FamilyArchiveNative.openMedia(documentLink.dataset.documentPath).catch((error) => {
+        status.textContent = `Не удалось открыть документ: ${error.message}`;
+        status.hidden = false;
+      });
+      return;
+    }
     const personButton = event.target.closest('[data-person-id]');
     if (personButton) selectPerson(personButton.dataset.personId, true);
     const mediaButton = event.target.closest('[data-media-id]');

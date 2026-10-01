@@ -1,0 +1,9 @@
+{
+  "appId": "xyz.blinddev.familyarchive",
+  "appName": "Семейный архив",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false
+  }
+}

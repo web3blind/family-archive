@@ -1,0 +1,40 @@
+{
+  "name": "family-archive",
+  "version": "0.2.0",
+  "description": "Offline portable family archive for desktop and Android",
+  "private": true,
+  "main": "desktop/main.cjs",
+  "engines": { "node": ">=22.12.0 <25" },
+  "scripts": {
+    "test": "node tests/archive-core.test.cjs && node --test tests/*.test.cjs",
+    "desktop:start": "electron .",
+    "build:web": "node scripts/build-web.cjs",
+    "android:sync": "npm run build:web && cap sync android",
+    "build:android": "npm run android:sync && cd android && ./gradlew assembleDebug",
+    "build:linux": "electron-builder --linux dir --x64 --publish never && node scripts/package-linux.cjs",
+    "build:windows": "electron-builder --win zip --x64 --publish never",
+    "build:mac": "electron-builder --mac zip --x64 --arm64 --publish never"
+  },
+  "dependencies": {
+    "@capacitor/core": ">=7.6.9 <8",
+    "@capacitor/android": ">=7.6.9 <8",
+    "yauzl": ">=3.4.0 <4",
+    "yazl": ">=3.3.1 <4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": ">=7.6.9 <8",
+    "electron": ">=43.7.6 <44",
+    "electron-builder": ">=26.17.0 <27"
+  },
+  "build": {
+    "appId": "xyz.blinddev.familyarchive",
+    "productName": "Family Archive",
+    "compression": "normal",
+    "artifactName": "family-archive-${os}-${arch}.${ext}",
+    "directories": { "output": "dist-desktop" },
+    "files": ["desktop/**/*", "assets/**/*", "index.html", "edit.html", "package.json"],
+    "linux": { "target": ["tar.gz"], "category": "Utility" },
+    "win": { "target": ["zip"], "signAndEditExecutable": false },
+    "mac": { "target": ["zip"], "category": "public.app-category.lifestyle" }
+  }
+}

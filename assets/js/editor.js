@@ -1,11 +1,22 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const core = window.FamilyArchive;
-  let archive = await core.loadArchive();
+  const native = window.FamilyArchiveNative || null;
+  let archive;
+  try { archive = await core.loadArchive(); }
+  catch (error) {
+    document.getElementById('editorStatus').textContent = `Не удалось открыть архив: ${error.message}. Данные не перезаписаны.`;
+    return;
+  }
   let currentPersonId = archive.people[0] ? archive.people[0].id : '';
   let currentStoryId = archive.stories[0] ? archive.stories[0].id : '';
   let currentMediaId = archive.media[0] ? archive.media[0].id : '';
   let archiveDirectoryHandle = null;
   let pendingMediaFile = null;
+  let pendingMediaPath = '';
+  let pendingMediaCopied = false;
+  let personDraft = null, storyDraft = null, mediaDraft = null;
+  let statusSequence = 0;
+  const dirtyForms = new Set();
 
   const $ = (id) => document.getElementById(id);
   const fields = {
@@ -40,7 +51,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       .replace(/[^a-zA-Z0-9а-яА-ЯёЁ._-]+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');
-    return safeName || `media-${Date.now()}`;
+    const dot = safeName.lastIndexOf('.');
+    const ext = dot > 0 ? safeName.slice(dot) : '';
+    const stem = (dot > 0 ? safeName.slice(0,dot) : safeName).replace(/^\.+/,'') || `media-${Date.now()}`;
+    return stem.slice(0,120-ext.length) + ext;
   }
 
   function detectMediaType(file) {
@@ -53,7 +67,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function mediaPathForFile(file) {
-    return `media/${sanitizeFileName(file?.name)}`;
+    return pendingMediaPath || `media/${sanitizeFileName(file?.name)}`;
   }
 
   function setMediaHint(message) {
@@ -74,18 +88,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!file || !archiveDirectoryHandle) return false;
     if (!(await ensureArchiveFolderPermission())) return false;
     const mediaDirectory = await archiveDirectoryHandle.getDirectoryHandle('media', { create: true });
-    const fileHandle = await mediaDirectory.getFileHandle(sanitizeFileName(file.name), { create: true });
+    const baseName = sanitizeFileName(file.name);
+    const dot = baseName.lastIndexOf('.');
+    const stem = dot > 0 ? baseName.slice(0, dot) : baseName;
+    const ext = dot > 0 ? baseName.slice(dot) : '';
+    let name = baseName;
+    for (let i = 1; ; i++) {
+      try { await mediaDirectory.getFileHandle(name); name = `${stem}-${i}${ext}`; }
+      catch (error) { if (error.name === 'NotFoundError') break; throw error; }
+    }
+    const fileHandle = await mediaDirectory.getFileHandle(name, { create: true });
     const writable = await fileHandle.createWritable();
     await writable.write(file);
     await writable.close();
+    pendingMediaPath = `media/${name}`;
+    fields.mediaPath.value = pendingMediaPath;
     return true;
   }
 
   async function copyPendingMediaIfPossible() {
     if (!pendingMediaFile) return false;
+    if (pendingMediaCopied) return true;
     try {
       const copied = await copyFileToMedia(pendingMediaFile);
-      if (copied) setMediaHint(`Файл скопирован в ${mediaPathForFile(pendingMediaFile)}.`);
+      if (copied) { pendingMediaCopied = true; setMediaHint(`Файл скопирован в ${mediaPathForFile(pendingMediaFile)}.`); }
       return copied;
     } catch (error) {
       setMediaHint(`Не удалось скопировать файл автоматически: ${error.message}. Скопируйте его вручную в media/.`);
@@ -97,10 +123,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     fields.jsonOutput.value = JSON.stringify(core.ensureArchiveShape(archive), null, 2);
   }
 
-  function persist(message = 'Сохранено в браузере.') {
-    archive = core.saveArchive(archive);
-    syncJsonOutput();
-    status(message);
+  async function persist(message = native ? 'Архив сохранён на устройстве.' : 'Сохранено в браузере.') {
+    const sequence = ++statusSequence;
+    status('Сохранение…');
+    try {
+      await core.saveArchive(archive);
+      syncJsonOutput();
+      if (sequence === statusSequence) status(message);
+      return true;
+    } catch (error) {
+      status(`Ошибка сохранения: ${error.message}. Изменения не подтверждены; повторите сохранение.`);
+      return false;
+    }
   }
 
   function renderPickers() {
@@ -113,7 +147,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function renderPersonForm() {
-    const person = archive.people.find((item) => item.id === currentPersonId) || emptyPerson();
+    const person = archive.people.find((item) => item.id === currentPersonId) || personDraft || emptyPerson();
     fields.personId.value = person.id;
     fields.fullName.value = person.fullName;
     fields.birthDate.value = person.birthDate;
@@ -130,7 +164,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function renderStoryForm() {
-    const story = archive.stories.find((item) => item.id === currentStoryId) || emptyStory();
+    const story = archive.stories.find((item) => item.id === currentStoryId) || storyDraft || emptyStory();
     fields.storyId.value = story.id;
     fields.storyTitle.value = story.title;
     fields.storyDate.value = story.date;
@@ -141,7 +175,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function renderMediaForm() {
-    const media = archive.media.find((item) => item.id === currentMediaId) || emptyMedia();
+    const media = archive.media.find((item) => item.id === currentMediaId) || mediaDraft || emptyMedia();
     fields.mediaId.value = media.id;
     fields.mediaTitle.value = media.title;
     fields.mediaType.value = media.type;
@@ -150,15 +184,49 @@ document.addEventListener('DOMContentLoaded', async () => {
     fields.mediaStoryIds.innerHTML = options(archive.stories, media.storyIds, false);
     fields.mediaFileInput.value = '';
     pendingMediaFile = null;
-    setMediaHint('Можно выбрать файл: редактор определит тип и путь. В Chromium после разрешения папки архива файл будет скопирован в media/.');
+    pendingMediaPath = '';
+    pendingMediaCopied = false;
+    setMediaHint(native ? 'Выберите файл на устройстве: он будет скопирован в архив.' : 'Можно выбрать файл: редактор определит тип и путь. В Chromium после разрешения папки архива файл будет скопирован в media/.');
   }
 
   function renderAll() {
     renderPickers();
-    renderPersonForm();
-    renderStoryForm();
-    renderMediaForm();
+    if (!dirtyForms.has('personForm')) renderPersonForm();
+    if (!dirtyForms.has('storyForm')) renderStoryForm();
+    if (!dirtyForms.has('mediaForm')) renderMediaForm();
   }
+
+  function requireSavedForms() {
+    if (!dirtyForms.size) return true;
+    const id = [...dirtyForms][0];
+    status('Есть несохранённые поля формы. Сначала сохраните человека, историю или медиа соответствующей кнопкой.');
+    $(id).querySelector('input:not([type="hidden"]), textarea, select')?.focus();
+    return false;
+  }
+
+  function discardForms() {
+    if (dirtyForms.size && !window.confirm('Есть несохранённые поля. Отменить изменения в формах и продолжить?')) return false;
+    dirtyForms.clear();
+    personDraft = storyDraft = mediaDraft = null;
+    return true;
+  }
+  for (const form of [fields.personForm, fields.storyForm, fields.mediaForm]) {
+    for (const eventName of ['input', 'change']) form.addEventListener(eventName, () => dirtyForms.add(form.id));
+  }
+  document.addEventListener('click', (event) => {
+    const control = event.target.closest('a[href="index.html"], #newPersonButton, #newStoryButton, #newMediaButton, #resetDemoButton, #deletePersonButton, #deleteStoryButton, #deleteMediaButton');
+    if (control && !discardForms()) { event.preventDefault(); event.stopImmediatePropagation(); }
+  }, true);
+  document.addEventListener('change', (event) => {
+    const previous = {personPicker:currentPersonId, storyPicker:currentStoryId, mediaPicker:currentMediaId};
+    if (Object.hasOwn(previous, event.target.id) && !discardForms()) {
+      event.target.value = previous[event.target.id];
+      event.stopImmediatePropagation();
+    }
+  }, true);
+  window.addEventListener('beforeunload', (event) => {
+    if (dirtyForms.size) { event.preventDefault(); event.returnValue = ''; }
+  });
 
   function emptyPerson() {
     return { id: core.createId('person'), fullName: '', birthDate: '', deathDate: '', country: '', place: '', motherId: null, fatherId: null, primaryMediaId: '', rememberFor: '', bio: '', storyIds: [], mediaIds: [] };
@@ -179,12 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function validateMediaPath(path) {
     const value = path.trim();
-    if (!value.startsWith('media/') || value === 'media/') {
-      throw new Error('Путь медиа должен начинаться с media/, например media/photo.jpg.');
-    }
-    if (value.includes('..') || value.includes('\\')) {
-      throw new Error('Путь медиа не должен содержать .. или обратные слэши. Используйте формат media/file.jpg.');
-    }
+    if (!core.validMediaPath(value)) throw new Error('Небезопасный путь: используйте относительный media/имя-файла.ext.');
     return value;
   }
 
@@ -288,27 +351,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   fields.archiveTitleInput.addEventListener('input', () => { archive.title = fields.archiveTitleInput.value; syncJsonOutput(); });
-  fields.rootPersonInput.addEventListener('change', () => { archive.rootPersonId = fields.rootPersonInput.value; persist('Корневой человек обновлён.'); renderAll(); });
-  $('saveArchiveButton').addEventListener('click', () => persist());
-  $('resetDemoButton').addEventListener('click', () => {
-    archive = core.resetArchive();
+  fields.rootPersonInput.addEventListener('change', async () => { archive.rootPersonId = fields.rootPersonInput.value || null; await persist('Корневой человек обновлён.'); });
+  $('saveArchiveButton').addEventListener('click', () => { if (requireSavedForms()) void persist(); });
+  $('resetDemoButton').addEventListener('click', async () => {
+    if (!window.confirm('Очистить текущий архив? Экспортируйте копию перед удалением.')) return;
+    archive = core.deepClone(core.fallbackArchive);
+    if (!await persist('Архив очищен.')) return;
     currentPersonId = archive.people[0]?.id || '';
     currentStoryId = archive.stories[0]?.id || '';
     currentMediaId = archive.media[0]?.id || '';
     renderAll();
-    status('Демо-данные восстановлены.');
+
   });
 
   fields.personPicker.addEventListener('change', () => { currentPersonId = fields.personPicker.value; renderAll(); status('Карточка человека загружена.'); });
   $('newPersonButton').addEventListener('click', () => {
     const person = emptyPerson();
-    archive.people.push(person);
+    personDraft = person;
     currentPersonId = person.id;
     renderAll();
     fields.fullName.focus();
     status('Создана новая карточка. Заполните поля и сохраните.');
   });
-  fields.personForm.addEventListener('submit', (event) => {
+  fields.personForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const person = {
       id: fields.personId.value || core.createId('person'),
@@ -333,13 +398,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (person.primaryMediaId && !person.mediaIds.includes(person.primaryMediaId)) person.mediaIds.push(person.primaryMediaId);
     upsert(archive.people, person);
+    personDraft = null;
     currentPersonId = person.id;
     if (!archive.rootPersonId) archive.rootPersonId = person.id;
     crossLinkPerson(person);
-    persist(`Сохранён человек: ${person.fullName || person.id}.`);
+    if (await persist(`Сохранён человек: ${person.fullName || person.id}.`)) dirtyForms.delete('personForm');
     renderAll();
   });
-  $('deletePersonButton').addEventListener('click', () => {
+  $('deletePersonButton').addEventListener('click', async () => {
     if (!currentPersonId) return;
     const person = archive.people.find((item) => item.id === currentPersonId);
     if (!window.confirm(`Удалить человека “${person?.fullName || currentPersonId}”? Это действие нельзя отменить кнопкой назад.`)) return;
@@ -349,13 +415,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     archive.media.forEach((media) => { media.personIds = media.personIds.filter((id) => id !== currentPersonId); });
     if (archive.rootPersonId === currentPersonId) archive.rootPersonId = archive.people[0]?.id || null;
     currentPersonId = archive.people[0]?.id || '';
-    persist('Человек удалён.');
+    await persist('Человек удалён.');
     renderAll();
   });
 
   fields.storyPicker.addEventListener('change', () => { currentStoryId = fields.storyPicker.value; renderAll(); status('История загружена.'); });
-  $('newStoryButton').addEventListener('click', () => { const story = emptyStory(); archive.stories.push(story); currentStoryId = story.id; renderAll(); fields.storyTitle.focus(); status('Создана новая история.'); });
-  fields.storyForm.addEventListener('submit', (event) => {
+  $('newStoryButton').addEventListener('click', () => { const story = emptyStory(); storyDraft = story; currentStoryId = story.id; renderAll(); fields.storyTitle.focus(); status('Создана новая история.'); });
+  fields.storyForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const story = { id: fields.storyId.value || core.createId('story'), title: fields.storyTitle.value.trim(), date: fields.storyDate.value.trim(), author: fields.storyAuthor.value.trim(), text: fields.storyText.value.trim(), personIds: selectedValues(fields.storyPersonIds), mediaIds: selectedValues(fields.storyMediaIds) };
     try {
@@ -365,19 +431,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     upsert(archive.stories, story);
+    storyDraft = null;
     currentStoryId = story.id;
     crossLinkStory(story);
-    persist(`История сохранена: ${story.title || story.id}.`);
+    if (await persist(`История сохранена: ${story.title || story.id}.`)) dirtyForms.delete('storyForm');
     renderAll();
   });
-  $('deleteStoryButton').addEventListener('click', () => {
+  $('deleteStoryButton').addEventListener('click', async () => {
     const story = archive.stories.find((item) => item.id === currentStoryId);
     if (!story || !window.confirm(`Удалить историю “${story.title || currentStoryId}”?`)) return;
     archive.stories = archive.stories.filter((story) => story.id !== currentStoryId);
     archive.people.forEach((person) => { person.storyIds = person.storyIds.filter((id) => id !== currentStoryId); });
     archive.media.forEach((media) => { media.storyIds = media.storyIds.filter((id) => id !== currentStoryId); });
     currentStoryId = archive.stories[0]?.id || '';
-    persist('История удалена.');
+    await persist('История удалена.');
     renderAll();
   });
 
@@ -395,11 +462,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       status(`Папка архива не выбрана: ${error.message}`);
     }
   });
-  $('newMediaButton').addEventListener('click', () => { const media = emptyMedia(); archive.media.push(media); currentMediaId = media.id; renderAll(); fields.mediaTitle.focus(); status('Создана новая запись медиа.'); });
+  $('newMediaButton').addEventListener('click', () => { const media = emptyMedia(); mediaDraft = media; currentMediaId = media.id; renderAll(); fields.mediaTitle.focus(); status('Создана новая запись медиа.'); });
   fields.mediaFileInput.addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (!file) return;
     pendingMediaFile = file;
+    pendingMediaPath = '';
+    pendingMediaCopied = false;
     fields.mediaType.value = detectMediaType(file);
     fields.mediaPath.value = mediaPathForFile(file);
     if (!fields.mediaTitle.value.trim()) fields.mediaTitle.value = file.name.replace(/\.[^.]+$/, '');
@@ -418,6 +487,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     await copyPendingMediaIfPossible();
+    mediaPath = validateMediaPath(fields.mediaPath.value);
     const media = { id: fields.mediaId.value || core.createId('media'), title: fields.mediaTitle.value.trim(), type: fields.mediaType.value, path: mediaPath, personIds: selectedValues(fields.mediaPersonIds), storyIds: selectedValues(fields.mediaStoryIds) };
     try {
       validateMedia(media);
@@ -426,52 +496,105 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     upsert(archive.media, media);
+    mediaDraft = null;
     currentMediaId = media.id;
     crossLinkMedia(media);
-    persist(`Медиа сохранено: ${media.title || media.id}.`);
+    if (await persist(`Медиа сохранено: ${media.title || media.id}.`)) dirtyForms.delete('mediaForm');
     renderAll();
   });
-  $('deleteMediaButton').addEventListener('click', () => {
+  $('deleteMediaButton').addEventListener('click', async () => {
     const mediaItem = archive.media.find((item) => item.id === currentMediaId);
     if (!mediaItem || !window.confirm(`Удалить медиа “${mediaItem.title || currentMediaId}”? Сам файл из папки media/ не удаляется.`)) return;
     archive.media = archive.media.filter((media) => media.id !== currentMediaId);
     archive.people.forEach((person) => { person.mediaIds = person.mediaIds.filter((id) => id !== currentMediaId); if (person.primaryMediaId === currentMediaId) person.primaryMediaId = ''; });
     archive.stories.forEach((story) => { story.mediaIds = story.mediaIds.filter((id) => id !== currentMediaId); });
     currentMediaId = archive.media[0]?.id || '';
-    persist('Медиа удалено.');
+    await persist('Медиа удалено.');
     renderAll();
   });
 
-  $('exportButton').addEventListener('click', () => {
-    persist('Файл archive.json скачивается. Сохраните его рядом с index.html и edit.html.');
-    core.downloadJson('archive.json', archive);
+  $('exportButton').addEventListener('click', async () => {
+    if (!requireSavedForms()) return;
+    if (!await persist('Архив сохранён.')) return;
+    if (native) {
+      try {
+        const result = await native.exportArchive();
+        status(result == null ? 'Экспорт отменён.' : 'Полный архив экспортирован.');
+      } catch (error) { status(`Ошибка экспорта: ${error.message}`); }
+    } else {
+      core.downloadJson('archive.json', archive);
+      status('Файл archive.json скачивается. Сохраните его рядом с index.html и edit.html.');
+    }
   });
   $('importFile').addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (!file) return;
     try {
-      archive = core.parseArchiveJson(await file.text());
+      const imported = core.parseArchiveJson(await file.text());
+      if (!window.confirm('Заменить текущий архив импортированным JSON? Сохраните резервную копию перед заменой.')) return;
+      dirtyForms.clear(); personDraft = storyDraft = mediaDraft = null;
+      archive = imported;
       currentPersonId = archive.people[0]?.id || '';
       currentStoryId = archive.stories[0]?.id || '';
       currentMediaId = archive.media[0]?.id || '';
-      persist('JSON импортирован и сохранён.');
+      await persist('JSON импортирован и сохранён.');
       renderAll();
     } catch (error) {
       status(`Ошибка импорта: ${error.message}`);
     }
   });
-  $('loadFromTextareaButton').addEventListener('click', () => {
+  $('loadFromTextareaButton').addEventListener('click', async () => {
     try {
-      archive = core.parseArchiveJson(fields.jsonOutput.value);
+      const imported = core.parseArchiveJson(fields.jsonOutput.value);
+      if (!window.confirm('Заменить текущий архив JSON из поля?')) return;
+      dirtyForms.clear(); personDraft = storyDraft = mediaDraft = null;
+      archive = imported;
       currentPersonId = archive.people[0]?.id || '';
       currentStoryId = archive.stories[0]?.id || '';
       currentMediaId = archive.media[0]?.id || '';
-      persist('JSON из поля загружен и сохранён.');
+      await persist('JSON из поля загружен и сохранён.');
       renderAll();
     } catch (error) {
       status(`Ошибка JSON: ${error.message}`);
     }
   });
+
+  if (native) {
+    document.body.classList.add('native-mode');
+    fields.mediaPath.required = false;
+    $('saveArchiveButton').textContent = 'Сохранить архив на устройстве';
+    $('exportButton').textContent = 'Экспортировать полный архив';
+    $('nativePickMediaButton').addEventListener('click', async () => {
+      try {
+        const picked = await native.pickMedia();
+        if (!picked) return;
+        if (!core.validMediaPath(picked.path) || !['photo', 'audio', 'video', 'document'].includes(picked.type) || typeof picked.title !== 'string') throw new Error('Выбранный файл имеет неверные данные.');
+        fields.mediaPath.value = picked.path;
+        fields.mediaType.value = picked.type;
+        fields.mediaTitle.value = picked.title;
+        dirtyForms.add('mediaForm');
+        setMediaHint('Файл скопирован в архив. Сохраните запись медиа, чтобы связать его с человеком или историей.');
+      } catch (error) { status(`Ошибка выбора файла: ${error.message}`); }
+    });
+    async function nativeImport(method, label) {
+      if (!requireSavedForms()) return;
+      if (!window.confirm('Открыть другой архив? Текущая сохранённая копия останется на устройстве. Несохранённые поля форм будут потеряны.')) return;
+      if (!await persist('Текущий архив сохранён.')) return;
+      try {
+        const imported = await native[method]();
+        if (imported == null) { status('Открытие архива отменено.'); return; }
+        const validated = core.ensureArchiveShape(imported);
+        archive = validated;
+        currentPersonId = archive.people[0]?.id || '';
+        currentStoryId = archive.stories[0]?.id || '';
+        currentMediaId = archive.media[0]?.id || '';
+        renderAll();
+        status(`${label}. Данные сохранены на устройстве.`);
+      } catch (error) { status(`Ошибка импорта: ${error.message}`); }
+    }
+    $('nativeOpenArchiveButton').addEventListener('click', () => nativeImport('openArchive', 'Архив открыт'));
+    $('nativeImportArchiveButton').addEventListener('click', () => nativeImport('importArchive', 'Архив импортирован'));
+  }
 
   renderAll();
   status('Редактор готов. Данные загружены.');

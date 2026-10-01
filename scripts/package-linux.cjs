@@ -1,0 +1,12 @@
+'use strict';
+const {spawnSync}=require('node:child_process');
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const output=path.join(root,'dist-desktop','family-archive-linux-x64.tar.gz');
+const source=path.join(root,'dist-desktop','linux-unpacked');
+if(!fs.existsSync(path.join(source,'family-archive')))throw new Error('Build Linux directory first.');
+const result=spawnSync('tar',['-I','gzip -1','-cf',output,'-C',source,'.'],{stdio:'inherit'});
+if(result.error)throw result.error;
+if(result.status!==0)process.exit(result.status||1);
+console.log('Linux archive packaged: '+output);
