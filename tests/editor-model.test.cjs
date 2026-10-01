@@ -51,6 +51,24 @@ test('legacy one-sided associations stay selected and survive unrelated entity e
   assert.deepEqual(model.editable(a,'stories','s').mediaIds,['m']);
   assert.equal(model.fileName('.jpg'),'file.jpg');assert.equal(model.fileName('.hidden.jpg'),'hidden.jpg');
 });
+test('person-scoped explicit sharing and unlink preserve the other person, media identity and legacy main-photo links', () => {
+  let a=model.save(empty(),'people',person('child'));
+  a=model.save(a,'people',person('mother'));
+  a=model.save(a,'media',{...model.empty('media','shared'),title:'Общее фото',path:'media/shared.jpg',personIds:['child']});
+  a=model.save(a,'people',{...model.editable(a,'people','child'),primaryMediaId:'shared'});
+  const mediaBefore=core.deepClone(a.media[0]);
+  a=model.save(a,'people',{...model.editable(a,'people','mother'),mediaIds:['shared'],primaryMediaId:'shared'});
+  assert.deepEqual(a.media[0],{...mediaBefore,personIds:['child','mother']});
+  a=model.save(a,'people',{...model.editable(a,'people','mother'),mediaIds:[],primaryMediaId:''});
+  assert.deepEqual(a.media[0],mediaBefore);
+  assert.equal(a.people.find(p=>p.id==='child').primaryMediaId,'shared');
+  assert.deepEqual(a.people.find(p=>p.id==='child').mediaIds,['shared']);
+  const legacy=core.deepClone(a);
+  legacy.people.find(p=>p.id==='child').mediaIds=[];legacy.media[0].personIds=[];
+  const p=model.editable(legacy,'people','child');assert.deepEqual(p.mediaIds,['shared']);
+  const repaired=model.save(legacy,'people',{...p,bio:'Изменение биографии'});
+  assert.equal(repaired.people.find(p=>p.id==='child').primaryMediaId,'shared');assert.deepEqual(repaired.media[0].personIds,['child']);
+});
 test('media path/type validation and sanitized filenames retain extensions', () => {
   assert.equal(model.fileType('picture.avif'),'photo');
   assert.equal(model.fileType('voice.opus'),'audio');

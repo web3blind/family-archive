@@ -384,6 +384,10 @@ MVP может быть разделён на два HTML-файла:
 - Media workflow production-pass: редактор выбирает файл, определяет тип, формирует путь `media/file-name.ext`; в Chromium через File System Access API может копировать файл в `media/` после разрешения папки архива.
 - Используется единая папка `media/`: меньше ручных решений для пользователя, а тип контента определяется скриптом по MIME type/расширению.
 
+## Person media isolation — approved refinement
+
+Show only related attachments in each person card and select main photo only among that person's photographs. Add explicit accessible library-selection action to attach existing files (including shared photos) without copying or stealing links from others. Upload in person context remains automatically attached. Preserve drafts, reciprocal/legacy one-sided associations, photos during attach/unlink/cancel, existing archives and independent library. Verify with real Chromium: child photos absent from mother card; shared photo intentionally attached appears in both; unrelated photos remain hidden; upload/cancel/save/restart; no data loss. Publish updated Windows ZIP and Android APK after checks; no user archive mutation.
+
 ## Editor redesign — approved scope
 
 Outcome: production-quality person-centred editor, no first-run wizard, numbered steps or prototype-only delivery. Preserve offline archive.json + media/, browser frontend, Windows and Android support and existing archives.

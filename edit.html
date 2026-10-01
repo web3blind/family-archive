@@ -34,6 +34,17 @@
       <div class="actions"><button class="button" type="submit">Добавить и связать</button><button id="cancelParentButton" class="button button-secondary" type="button">Отмена</button></div>
     </form>
   </dialog>
+  <dialog id="personLibraryDialog" aria-labelledby="personLibraryHeading" aria-describedby="personLibraryHelp" aria-modal="true">
+    <form id="personLibraryForm" class="stacked-form">
+      <h2 id="personLibraryHeading">Добавить файлы из библиотеки</h2>
+      <p id="personLibraryHelp" class="hint">Выберите файлы для этого человека. Один файл может быть связан с несколькими людьми. После добавления сохраните карточку человека.</p>
+      <label for="personLibrarySearch">Поиск по названию файла</label>
+      <input id="personLibrarySearch" type="search" aria-controls="personLibraryResults">
+      <p id="personLibraryStatus" role="status" class="hint" aria-atomic="true"></p>
+      <fieldset class="choice-group"><legend>Файлы для добавления</legend><div id="personLibraryResults" class="choice-list"></div></fieldset>
+      <div class="actions"><button id="confirmPersonLibraryButton" class="button" type="submit">Добавить выбранные файлы</button><button id="cancelPersonLibraryButton" class="button button-secondary" type="button">Отмена</button></div>
+    </form>
+  </dialog>
   <input id="mediaFileInput" type="file" multiple hidden>
   <input id="mediaFolderInput" type="file" webkitdirectory multiple hidden>
   <script src="assets/js/platform.js"></script>

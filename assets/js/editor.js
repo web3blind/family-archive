@@ -150,7 +150,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   function renderPerson(p) {
     const mother=item('people',p.motherId),father=item('people',p.fatherId);
-    const photos=archive.media.filter(m=>m.type==='photo');
+    // item() resolves legacy one-sided links; a draft's explicit removals stay authoritative.
+    const attachments=archive.media.filter(m=>p.mediaIds.includes(m.id));
+    const photos=attachments.filter(m=>m.type==='photo');
     const children=all('people').filter(other=>other.motherId===p.id||other.fatherId===p.id);
     const stories=archive.stories.filter(s=>p.storyIds.includes(s.id)||s.personIds.includes(p.id));
     const photo=archive.media.find(m=>m.id===p.primaryMediaId);
@@ -159,8 +161,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       ${field('fullName','Имя / ФИО',p.fullName,{required:true})}<div class="form-grid two">${field('birthDate','Дата рождения',p.birthDate,{hint:'Можно указать год или примерную дату.'})}${field('deathDate','Дата смерти',p.deathDate)}${field('country','Страна',p.country)}${field('place','Место жизни',p.place)}</div>
       <fieldset class="relatives"><legend>Родители</legend><div class="form-grid two">${[['motherId','Мать',mother],['fatherId','Отец',father]].map(([key,label,parent])=>`<div><label for="${key}">${label}<select id="${key}" name="${key}" aria-describedby="entityError"><option value="">Не указан${key==='motherId'?'а':''}</option>${archive.people.filter(other=>other.id!==p.id).map(other=>`<option value="${h(other.id)}" ${p[key]===other.id?'selected':''}>${h(other.fullName)}</option>`).join('')}</select></label><div class="actions">${button(parent?'Выбрать другого или создать':'Добавить '+label.toLowerCase(),'parent',`data-role="${key}" id="add${key==='motherId'?'Mother':'Father'}Button"`)}${parent?linkPerson(parent.id,'Открыть: '+parent.fullName):''}</div></div>`).join('')}</div></fieldset>
       ${field('rememberFor','Что важно помнить — необязательно',p.rememberFor,{area:true})}${field('bio','Биография — необязательно',p.bio,{area:true,rows:5})}
-      <fieldset class="choice-group"><legend>Главное фото карточки</legend><label class="check-row"><input type="radio" name="primaryMediaId" value="" ${!p.primaryMediaId?'checked':''}><span>Без главного фото</span></label>${photos.map(m=>`<label class="check-row"><input type="radio" name="primaryMediaId" value="${h(m.id)}" ${p.primaryMediaId===m.id?'checked':''}><span>${h(m.title||'Фото без названия')}</span></label>`).join('')}<p class="hint">Выбранное главное фото автоматически прикрепляется к человеку.</p></fieldset>
-      ${choices('mediaIds','Прикреплённые файлы',archive.media,p.mediaIds,'mediaIds','Файлов пока нет. Загрузите их прямо здесь.')}${uploadButtons(p.id)}
+      <fieldset class="choice-group"><legend>Главное фото карточки</legend><label class="check-row"><input type="radio" name="primaryMediaId" value="" ${!p.primaryMediaId?'checked':''}><span>Без главного фото</span></label>${photos.map(m=>`<label class="check-row"><input type="radio" name="primaryMediaId" value="${h(m.id)}" ${p.primaryMediaId===m.id?'checked':''}><span>${h(m.title||'Фото без названия')}</span></label>`).join('')}<p class="hint">Выберите главное фото из прикреплённых фотографий. Другие фото можно добавить из библиотеки.</p></fieldset>
+      ${choices('mediaIds','Прикреплённые файлы',attachments,p.mediaIds,'mediaIds','Файлов пока нет. Загрузите их прямо здесь или добавьте из библиотеки.')}<p class="hint">Снятие отметки убирает связь только с этим человеком. Сам файл остаётся в библиотеке.</p>${button('Добавить из библиотеки','personLibrary','id="addFromLibraryButton"')}${uploadButtons(p.id)}
       ${choices('storyIds','Истории человека',archive.stories,p.storyIds,'storyIds','Пока нет историй. Напишите первое воспоминание.')}${entityActions('people',p.id)}</form>
       <section aria-labelledby="personStoriesHeading"><h3 id="personStoriesHeading">Воспоминания и истории</h3>${button('Написать историю о человеке','new',`id="newStoryButton" data-kind="stories" data-context="${h(p.id)}"`)}<ul class="entry-list">${stories.map(s=>`<li>${button(s.title,'open',`data-kind="stories" data-id="${h(s.id)}" data-context="${h(p.id)}"`)}</li>`).join('')}</ul></section>
       <section aria-labelledby="familyConnectionsHeading"><h3 id="familyConnectionsHeading">Связи в семье</h3><p>Дети: ${children.length?'':'пока не указаны.'}</p><ul class="entry-list">${children.map(child=>`<li>${linkPerson(child.id)}</li>`).join('')}</ul>${button(archive.rootPersonId===p.id?'Этот человек — начало дерева':'Сделать началом дерева','root',`id="setRootButton" data-id="${h(p.id)}" ${archive.rootPersonId===p.id?'disabled':''}`)}</section></section>`;
@@ -244,7 +246,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if(target.closest('#mediaIds') && !target.checked) {
       const p=draft('people',session.view.id);
-      if(p.primaryMediaId===target.value) {p.primaryMediaId='';p.mediaIds=p.mediaIds.filter(id=>id!==target.value);main.querySelector('input[name="primaryMediaId"][value=""]').checked=true;storeDrafts();}
+      if(p.primaryMediaId===target.value) {p.primaryMediaId='';p.mediaIds=p.mediaIds.filter(id=>id!==target.value);storeDrafts();}
+      render('addFromLibraryButton');
+      status('Связь с файлом убрана из карточки. Сохраните человека, чтобы закрепить изменение.');
     }
   });
   main.addEventListener('submit',async event=>{
@@ -269,6 +273,42 @@ document.addEventListener('DOMContentLoaded', async () => {
       if(await commit(next,'Карточка сохранена в архиве.',clear))render('saveEntityButton');
       else fail(new Error($('editorStatus').textContent),form.id);
     } catch(error) {fail(error,form.id);}
+  });
+  let libraryPersonId=null, libraryCandidates=[], librarySelection=new Set();
+  function renderPersonLibrary() {
+    const term=$('personLibrarySearch').value.trim().toLocaleLowerCase('ru');
+    const entries=libraryCandidates.filter(m=>m.title.toLocaleLowerCase('ru').includes(term));
+    $('personLibraryResults').innerHTML=entries.length?entries.map(m=>`<label class="check-row"><input type="checkbox" value="${h(m.id)}" ${librarySelection.has(m.id)?'checked':''}><span>${h(m.title || 'Файл без названия')} — ${h(typeName[m.type])}</span></label>`).join(''):'<p class="hint">Нет файлов для добавления. Измените поиск или загрузите новые файлы в карточке.</p>';
+    $('personLibraryStatus').textContent=`Найдено: ${entries.length}. Выбрано для добавления: ${librarySelection.size}.`;
+    $('confirmPersonLibraryButton').disabled=!librarySelection.size;
+  }
+  function closePersonLibrary() {
+    $('personLibraryDialog').close();libraryPersonId=null;libraryCandidates=[];librarySelection.clear();
+    $('addFromLibraryButton')?.focus();
+  }
+  $('personLibrarySearch').addEventListener('input',renderPersonLibrary);
+  $('personLibraryResults').addEventListener('change',event=>{
+    const input=event.target;if(!input.matches('input[type="checkbox"]'))return;
+    if(input.checked)librarySelection.add(input.value);else librarySelection.delete(input.value);
+    $('personLibraryStatus').textContent=`Найдено: ${$('personLibraryResults').querySelectorAll('input').length}. Выбрано для добавления: ${librarySelection.size}.`;
+    $('confirmPersonLibraryButton').disabled=!librarySelection.size;
+  });
+  $('cancelPersonLibraryButton').addEventListener('click',closePersonLibrary);
+  $('personLibraryDialog').addEventListener('cancel',event=>{event.preventDefault();closePersonLibrary();});
+  $('personLibraryDialog').addEventListener('keydown',event=>{
+    if(event.key!=='Tab')return;
+    const controls=[...$('personLibraryForm').querySelectorAll('input,button')].filter(control=>!control.disabled && control.getClientRects().length);
+    const first=controls[0],last=controls[controls.length-1];
+    if(event.shiftKey&&document.activeElement===first) {event.preventDefault();last.focus();}
+    else if(!event.shiftKey&&document.activeElement===last) {event.preventDefault();first.focus();}
+  });
+  $('personLibraryForm').addEventListener('submit',event=>{
+    event.preventDefault();if(busy || !librarySelection.size || session.view.type!=='person' || session.view.id!==libraryPersonId)return;
+    capture($('personForm'));
+    const p=draft('people',libraryPersonId);
+    for(const id of librarySelection)if(archive.media.some(m=>m.id===id) && !p.mediaIds.includes(id))p.mediaIds.push(id);
+    closePersonLibrary();render('addFromLibraryButton');
+    status('Файлы добавлены в карточку. Сохраните человека, чтобы закрепить связи.');
   });
   function dialogClose() {if(busy)return;$('parentDialog').close();$(parentReturn)?.focus();}
   $('cancelParentButton').addEventListener('click',dialogClose);
@@ -353,6 +393,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           if(!archive.people.some(p=>p.id===data.id)) {status('Сначала сохраните человека, затем сделайте его началом дерева.');break;}
           const next=clone(archive);next.rootPersonId=data.id;
           if(await commit(next,'Начало дерева изменено.'))render('setRootButton');break;
+        }
+        case 'personLibrary': {
+          libraryPersonId=session.view.id;librarySelection.clear();
+          const p=item('people',libraryPersonId);
+          libraryCandidates=archive.media.filter(m=>!p.mediaIds.includes(m.id));
+          $('personLibrarySearch').value='';renderPersonLibrary();
+          $('personLibraryDialog').showModal();$('personLibrarySearch').focus();break;
         }
         case 'parent': {
           capture($('personForm'));parentRole=data.role;parentReturn=control.id;

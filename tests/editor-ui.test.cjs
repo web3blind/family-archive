@@ -127,7 +127,7 @@ test('Chromium connected browser: family, parents, cycles, drafts, file batches,
   await b.click('#newStoryButton');await b.set('storyTitle','Синтетическое воспоминание');await b.set('storyText','Синтетический текст семейной истории.');await b.click(`#storyMediaIds input[value="${photo.id}"]`);await b.submit('storyForm');await b.wait('editorStatus.textContent.includes("Карточка сохранена")');
   const story=(await b.saved()).stories[0];assert.ok(story.personIds.includes(child.id));assert.ok((await b.saved()).people.find(p=>p.id===child.id).storyIds.includes(story.id));
   await b.click('[data-action="backPerson"]');assert.equal(await b.evaluate('personId.value'),child.id);
-  await b.click('[data-view="family"]');await b.click(`[data-id="${father.id}"][data-action="open"]`);await b.click(`#mediaIds input[value="${photo.id}"]`);await b.submit('personForm');await b.wait('editorStatus.textContent.includes("Карточка сохранена")');await b.click('#setRootButton');await b.wait('editorStatus.textContent.includes("Начало дерева изменено")');assert.equal((await b.saved()).rootPersonId,father.id);
+  await b.click('[data-view="family"]');await b.click(`[data-id="${father.id}"][data-action="open"]`);await b.click('#addFromLibraryButton');await b.click(`#personLibraryResults input[value="${photo.id}"]`);await b.submit('personLibraryForm');await b.submit('personForm');await b.wait('editorStatus.textContent.includes("Карточка сохранена")');await b.click('#setRootButton');await b.wait('editorStatus.textContent.includes("Начало дерева изменено")');assert.equal((await b.saved()).rootPersonId,father.id);
   await b.click('[data-view="family"]');await b.click(`[data-id="${mother.id}"][data-action="open"]`);assert.equal(await b.evaluate('bio.value'),'Несохранённая биография матери');
   await b.click('[data-view="library"]');await b.click('#newMediaButton');await b.set('mediaTitle','Самостоятельный документ');await b.set('mediaType','document');await b.set('mediaPath','media/Synthetic note.txt');await b.submit('mediaForm');await b.wait('editorStatus.textContent.includes("Карточка сохранена")');assert.equal((await b.saved()).media.at(-1).personIds.length,0);
   await b.click('[data-view="settings"]');
@@ -148,6 +148,68 @@ test('Chromium connected browser: family, parents, cycles, drafts, file batches,
   await b.navigate();await b.click('[data-view="library"]');const documentMedia=(await b.saved()).media.find(m=>m.type==='document');await b.click(`[data-id="${documentMedia.id}"][data-action="open"]`);await b.click('[data-action="delete"]');await b.wait('!JSON.parse(localStorage.getItem("familyArchive.v1")).media.some(m=>m.id==='+JSON.stringify(documentMedia.id)+')');assert.ok((await b.saved()).media.some(m=>m.id===photo.id));
   await b.click('[data-view="family"]');await b.set('peopleSearch','');await b.click(`[data-id="${father.id}"][data-action="open"]`);await b.click('[data-action="delete"]');await b.wait('!JSON.parse(localStorage.getItem("familyArchive.v1")).people.some(p=>p.id==='+JSON.stringify(father.id)+')');assert.equal((await b.saved()).people.find(p=>p.id===child.id).fatherId,null);
   await b.click(`[data-id="${mother.id}"][data-action="open"]`);assert.equal(await b.evaluate('bio.value'),'Несохранённая биография матери');
+  assert.deepEqual(b.exceptions,[]);
+});
+test('Chromium scoped attachments: explicit sharing, cancel, keyboard, unlink, draft restart and legacy links', {skip:!available,timeout:45000}, async t=>{
+  const b=await browser(t);
+  const model=require('../assets/js/editor-model.js');
+  const seed={version:1,title:'Synthetic test archive',rootPersonId:'child',people:[
+    {...model.empty('people','child'),fullName:'Ребёнок',motherId:'mother',mediaIds:['child-photo','shared'],primaryMediaId:'child-photo'},
+    {...model.empty('people','mother'),fullName:'Мать',mediaIds:['mother-photo'],primaryMediaId:'mother-photo'}],stories:[],media:[
+    {...model.empty('media','child-photo'),title:'Фото ребёнка',path:'media/Synthetic photo.svg',personIds:['child']},
+    {...model.empty('media','mother-photo'),title:'Фото матери',path:'media/Synthetic photo.svg',personIds:['mother']},
+    {...model.empty('media','shared'),title:'Общее фото',path:'media/Synthetic photo.svg',personIds:['child']},
+    {...model.empty('media','legacy'),title:'Старинное фото',path:'media/Synthetic photo.svg',personIds:['mother']},
+    {...model.empty('media','note'),title:'Заметка',type:'document',path:'media/Synthetic note.txt'}]};
+  await b.evaluate(`localStorage.setItem('familyArchive.v1',${JSON.stringify(JSON.stringify(seed))});localStorage.removeItem('familyArchive.editorDrafts.v1')`);await b.navigate();
+  const open=async id=>{await b.click('[data-view="family"]');await b.click(`[data-action="open"][data-id="${id}"]`);};
+  const attached=()=>b.evaluate(`[...mediaIds.querySelectorAll('input')].map(e=>e.value).sort()`);
+  const photos=()=>b.evaluate(`[...document.querySelectorAll('input[name="primaryMediaId"]')].map(e=>e.value).filter(Boolean).sort()`);
+  const check=async selector=>{await b.click(selector);};
+  const key=async (name,code,number,extra={})=>{await b.send('Input.dispatchKeyEvent',{type:'keyDown',key:name,code,windowsVirtualKeyCode:number,...extra});await b.send('Input.dispatchKeyEvent',{type:'keyUp',key:name,code,windowsVirtualKeyCode:number,...extra});};
+  await open('mother');assert.deepEqual(await attached(),['legacy','mother-photo']);assert.deepEqual(await photos(),['legacy','mother-photo']);
+  await b.set('bio','Несохранённая биография');await b.set('place','Черновик места');
+  const savedBefore=await b.saved();
+  const draftsBefore=await b.evaluate(`localStorage.getItem('familyArchive.editorDrafts.v1')`);
+  await b.click('#addFromLibraryButton');assert.equal(await b.focus(),'personLibrarySearch');
+  const ax=(await b.send('Accessibility.getFullAXTree')).nodes;
+  assert.ok(ax.some(n=>!n.ignored&&n.role?.value==='dialog'&&n.name?.value==='Добавить файлы из библиотеки'));
+  assert.ok(ax.some(n=>!n.ignored&&n.role?.value==='checkbox'&&n.name?.value.includes('Общее фото')));
+  assert.ok(!ax.some(n=>!n.ignored&&n.role?.value==='textbox'&&n.name?.value==='Имя / ФИО'));
+  await b.send('Emulation.setDeviceMetricsOverride',{width:320,height:800,deviceScaleFactor:1,mobile:false});
+  assert.equal(await b.evaluate('document.documentElement.scrollWidth <= window.innerWidth && personLibraryDialog.scrollWidth <= personLibraryDialog.clientWidth'),true);
+  await b.evaluate(`personLibraryResults.querySelector('input[value="shared"]').focus()`);await key(' ','Space',32,{text:' '});
+  assert.equal(await b.evaluate('personLibraryResults.querySelector("input[value=shared]").checked'),true);
+  await b.set('personLibrarySearch','Заметка');await check('#personLibraryResults input[value="note"]');
+  await b.evaluate('cancelPersonLibraryButton.focus()');await key('Tab','Tab',9);assert.equal(await b.focus(),'personLibrarySearch');
+  await key('Tab','Tab',9,{modifiers:8});assert.equal(await b.focus(),'cancelPersonLibraryButton');
+  await key('Escape','Escape',27);await b.wait('!personLibraryDialog.open');assert.equal(await b.focus(),'addFromLibraryButton');
+  assert.equal(await b.evaluate(`localStorage.getItem('familyArchive.editorDrafts.v1')`),draftsBefore);assert.deepEqual(await b.saved(),savedBefore);
+  assert.equal(await b.evaluate('bio.value'),'Несохранённая биография');assert.equal(await b.evaluate('place.value'),'Черновик места');
+  assert.equal(await b.evaluate('document.querySelector("input[name=primaryMediaId]:checked").value'),'mother-photo');
+  await b.click('#addFromLibraryButton');assert.equal(await b.evaluate('personLibraryResults.querySelector("input:checked")'),null);
+  await check('#personLibraryResults input[value="shared"]');await b.click('#cancelPersonLibraryButton');
+  assert.equal(await b.focus(),'addFromLibraryButton');assert.equal(await b.evaluate(`localStorage.getItem('familyArchive.editorDrafts.v1')`),draftsBefore);assert.deepEqual(await b.saved(),savedBefore);
+  await b.click('#addFromLibraryButton');await b.set('personLibrarySearch','Нет такого файла');
+  assert.equal(await b.evaluate('personLibraryResults.querySelectorAll("input").length'),0);assert.equal(await b.evaluate('confirmPersonLibraryButton.disabled'),true);
+  await b.set('personLibrarySearch','');
+  await check('#personLibraryResults input[value="shared"]');await b.set('personLibrarySearch','Заметка');await check('#personLibraryResults input[value="note"]');await b.set('personLibrarySearch','Общее');
+  assert.equal(await b.evaluate('personLibraryResults.querySelector("input[value=shared]").checked'),true);
+  await b.submit('personLibraryForm');await b.wait('!personLibraryDialog.open');assert.equal(await b.focus(),'addFromLibraryButton');
+  assert.deepEqual(await attached(),['legacy','mother-photo','note','shared']);assert.deepEqual(await photos(),['legacy','mother-photo','shared']);assert.deepEqual(await b.saved(),savedBefore);
+  await b.navigate();assert.equal(await b.evaluate('bio.value'),'Несохранённая биография');assert.deepEqual(await attached(),['legacy','mother-photo','note','shared']);
+  await check('input[name="primaryMediaId"][value="shared"]');await b.submit('personForm');await b.wait('editorStatus.textContent.includes("Карточка сохранена")');
+  let saved=await b.saved();assert.equal(saved.media.length,seed.media.length);assert.deepEqual(saved.media.find(m=>m.id==='shared').personIds.sort(),['child','mother']);assert.equal(saved.people.find(p=>p.id==='mother').primaryMediaId,'shared');
+  await open('child');assert.deepEqual(await attached(),['child-photo','shared']);assert.deepEqual(await photos(),['child-photo','shared']);
+  await check('#mediaIds input[value="shared"]');await b.submit('personForm');await b.wait('editorStatus.textContent.includes("Карточка сохранена")');
+  saved=await b.saved();assert.deepEqual(saved.media.find(m=>m.id==='shared').personIds,['mother']);assert.equal(saved.people.find(p=>p.id==='mother').primaryMediaId,'shared');
+  await open('mother');assert.ok((await attached()).includes('shared'));await check('#mediaIds input[value="shared"]');
+  assert.equal(await b.evaluate('document.querySelector("input[name=primaryMediaId]:checked").value'),'');assert.ok(!(await photos()).includes('shared'));
+  await b.navigate();assert.ok(!(await attached()).includes('shared'));await b.submit('personForm');await b.wait('editorStatus.textContent.includes("Карточка сохранена")');
+  saved=await b.saved();assert.deepEqual(saved.media.find(m=>m.id==='shared').personIds,[]);assert.equal(saved.people.find(p=>p.id==='child').primaryMediaId,'child-photo');assert.ok(saved.people.find(p=>p.id==='child').mediaIds.includes('child-photo'));
+  // Existing media-properties selection still supports sharing in the other direction.
+  await b.click('[data-view="library"]');await b.click('[data-action="open"][data-id="shared"]');await check('#mediaPersonIds input[value="child"]');await check('#mediaPersonIds input[value="mother"]');await b.submit('mediaForm');await b.wait('editorStatus.textContent.includes("Карточка сохранена")');
+  await open('mother');assert.ok((await attached()).includes('shared'));await open('child');assert.ok((await attached()).includes('shared'));
   assert.deepEqual(b.exceptions,[]);
 });
 test('Chromium native boundary: cancelled picker, partial folder batch, failed save/restart, retry, unrelated drafts, new contextual story', {skip:!available,timeout:45000}, async t=>{
