@@ -32,7 +32,7 @@
     "compression": "normal",
     "artifactName": "family-archive-${os}-${arch}.${ext}",
     "directories": { "output": "dist-desktop" },
-    "files": ["desktop/**/*", "assets/**/*", "index.html", "edit.html", "package.json"],
+    "files": ["desktop/**/*", "assets/**/*", "index.html", "edit.html", "package.json", "!node_modules/@capacitor/**/*"],
     "linux": { "target": ["tar.gz"], "category": "Utility" },
     "win": { "target": ["zip"], "signAndEditExecutable": false },
     "mac": { "target": ["zip"], "category": "public.app-category.lifestyle" }
