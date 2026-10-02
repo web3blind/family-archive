@@ -55,8 +55,17 @@ async function copyBounded(source,target,limit=MAX_FILE,onBytes=()=>{}) {
  }finally{await handle.close();}
 }
 class ArchiveStore {
- constructor(root) { this.root=path.resolve(root); }
+ constructor(root,{portable=false,dataRoot=null}={}) { this.root=path.resolve(root); this.portable=portable;this.dataRoot=dataRoot&&path.resolve(dataRoot); }
  async archiveIdentity() {
+  if(this.portable){
+   const file=path.join(await safeRoot(this.root),'.family-portable-identity');
+   await regularFile(file);const value=JSON.parse(await fs.readFile(file,'utf8'));
+   const marker=path.join(this.root,'.family-archive-identity');await regularFile(marker);
+   const uuid=await fs.readFile(marker,'utf8');
+   if(!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(uuid)||value.uuid!==uuid||!/^[a-f0-9]{64}$/.test(value.identity))throw new Error('Invalid portable archive identity or generation.');
+   if(this.dataRoot&&value.slot!==path.relative(this.dataRoot,this.root).split(path.sep).join('/'))throw new Error('Portable archive copied into a different slot. Import it as a new archive.');
+   return value.identity;
+  }
   const root=await safeRoot(this.root,true),file=path.join(root,'.family-archive-identity');
   // Publish a fully synced marker exclusively; concurrent readers never see a partial UUID.
   try {await regularFile(file);} catch(error) {

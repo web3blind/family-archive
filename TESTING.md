@@ -1,4 +1,20 @@
-# Проверка семейного архива 0.3.2
+# Проверка семейного архива 0.3.3
+
+## Переносимый desktop — 0.3.3
+
+- `npm test`: 61 passed, 0 failed/cancelled/skipped. Из них 17 filesystem-регрессий: пути Windows/Linux/macOS, первая инициализация, перенос папки, полный профиль и выбранный внешний архив, исходные identity/старые imports, испорченный JSON/пропавшие media, symlinks, приоритет существующей data, чужие копии и смена поколения, живая/мёртвая bootstrap-блокировка, SIGKILL во время копирования и безопасный повтор, запрет вложения назначения в источник.
+- RED: реальный предыдущий Linux executable с `--current=/home/assistent/.hermes/cache/scratch/family-portable-old-linux-f00f5af` остановился на отсутствии `data/archive/archive.json`. Дополнительные регрессии пересечения папок и прежних imports тоже наблюдались красными до исправления.
+- `npm run build:linux`: успешно, публикация запрещена (`--publish never`). После проверки пересобраны Windows/Linux/macOS Intel/Apple Silicon и Android для 0.3.3; пакеты проверяются перед публикацией.
+- `xvfb-run -a node scripts/test-portable-desktop.cjs --old=/home/assistent/.hermes/cache/scratch/family-portable-old-linux-f00f5af`: passed. Настоящие packaged main/preload/IPC/Chromium: eager data layout, перезапуск, перенос всей папки приложения и смена HOME, несохранённые поля, миграция профиля, созданного старым packaged executable, выбранный внешний архив, совпадение SHA-256 всех файлов оригинала и двух backup-копий, отсутствие изменений в оригинале, loose media, ZIP metadata/byte roundtrip, миграция→restart→relocation, отсутствие восстановления чужих черновиков, EACCES без скрытого fallback. Последние fixtures: `/home/assistent/.hermes/cache/scratch/family-packaged-portable-j7EE3Q`.
+- Блокирующий draft-only сценарий проверен отдельно: предыдущий packaged executable впервые открывает редактор и вводит `Never saved draft`/биографию, без `seed()`/`writeArchive()`. Native read остаётся `null`, запрос bundled `archive.json` возвращает 404; фактическая база `FamilyArchive.loadArchive()` — пустой fallback с заголовком «Семейный архив», не демо JSON. Новая версия материализует именно эту базу только в рабочей копии и сохраняет старую identity; точные поля восстанавливаются при первом запуске и перезапуске. SHA-256 оригинала и обеих backup-копий совпадают, в оригинале canonical JSON по-прежнему отсутствует.
+- Backup-only default archive (валидный или повреждённый `.bak`, с identity или без) fail-closed: нет публикации data/пустого архива и нет изменения исходных файлов. Ошибка явно требует восстановления `archive.json.bak`; автоматическое угадывание базы не выполняется. Отсутствие canonical JSON и identity тоже требует ручного восстановления.
+- RED для обоих дефектов подтверждён исходным `portable.cjs`, извлечённым из прежнего QA ASAR: identity draft-only менялась, backup-only превращался в пустой архив. Синтетические fixtures: `family-draft-red-Sdjw7Z`. GREEN: `node --test tests/portable-storage.test.cjs` 17/17, полный `npm test` 61/61, Linux build и полный packaged driver прошли.
+- Реальный packaged integrated smoke (`FAMILY_ARCHIVE_DATA_DIR` в scratch, `FAMILY_ARCHIVE_SMOKE=all`, затем `restart`): 2 человека, родитель, главное фото, история, ZIP roundtrip и совпадение media bytes; повторный запуск читает импорт из относительной выбранной папки внутри data.
+- Все fixtures и копия прежнего executable — только Hermes scratch. Реальные пользовательские профили не открывались/не мигрировались. Копирование старого профиля требует закрытой старой версии; backup может занимать несколько размеров профиля. Повреждённые невыбранные imports сохраняются в backup и перечисляются в `portable-migration.json`, но не получают пригодную для восстановления identity до исправления.
+- Windows/macOS здесь проверены только как pure path derivation, не как настоящий запуск. Android/browser production-файлы не менялись, их имеющиеся Node/Chromium регрессии прошли. OS chooser/физические устройства/скринридеры не заявлены проверенными. Независимый safety review пройден после исправления draft-only сценария: 17/17 filesystem-тестов, 61/61 общих тестов и настоящий old→new packaged Chromium сценарий. Windows/macOS runtime по-прежнему не проверен.
+
+Ниже — исторические проверки опубликованной 0.3.2, не доказательство нового релиза.
+
 
 ## Подтверждённые проверки
 
@@ -9,7 +25,7 @@
 - Исходное и упакованное Linux-приложение: integrated smoke и restart прошли; реальный main IPC, протокол, сохранение, родитель, фото, история, ZIP и перезапуск. Выбор файлов в smoke подставлен, а не проверен вручную.
 - Android `testDebugUnitTest lintDebug assembleDebug`: успешно; 24 JVM-теста без ошибок. Lint-предупреждения библиотек/ресурсов не скрывались. Web-assets синхронизированы после окончательных исправлений.
 - Native identity, storage limits, symlinks, exclusive file copies и отмены покрыты регрессиями. Старый portable schema v1 сохранён.
-- Windows ZIP проверяется на целостность, длинные пути и отсутствие Android build-файлов. Runtime-файлы ASAR сверяются с исходниками; APK web-assets сверяются с исходниками. Android versionCode 4 / versionName 0.3.2.
+- Windows ZIP проверяется на целостность, длинные пути и отсутствие Android build-файлов. Runtime-файлы ASAR сверяются с исходниками; APK web-assets сверяются с исходниками. Android versionCode 5 / versionName 0.3.3.
 
 - Дополнительно: изоляция файлов ребёнка/матери, явное добавление общего фото из библиотеки, отмена без изменений, снятие связи без удаления файла и чужих связей, восстановление черновика, keyboard/focus и 320px диалог.
 

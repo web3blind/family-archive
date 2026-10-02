@@ -5,8 +5,16 @@ const {pathToFileURL}=require('node:url');
 const {app,BrowserWindow,dialog,ipcMain,protocol,net,shell}=require('electron');
 const {ArchiveStore,atomicWrite}=require('./store.cjs');
 protocol.registerSchemesAsPrivileged([{scheme:'family',privileges:{standard:true,secure:true,supportFetchAPI:true,stream:true}}]);
-if(process.env.FAMILY_ARCHIVE_DATA_DIR) app.setPath('userData',path.resolve(process.env.FAMILY_ARCHIVE_DATA_DIR));
-const singleInstance=app.requestSingleInstanceLock();
+const {portableDataPath,preparePortable,selectedRoot,select,copyArchive,identity}=require('./portable.cjs');
+const legacyHome=app.getPath('userData'); // Electron's actual app.name, before override.
+const dataHome=portableDataPath({packaged:app.isPackaged,codeRoot:path.resolve(__dirname,'..'),override:process.env.FAMILY_ARCHIVE_DATA_DIR});
+let startupError;
+try{
+ preparePortable({data:dataHome,legacy:process.env.FAMILY_ARCHIVE_DATA_DIR?null:legacyHome});
+ app.setPath('userData',dataHome);
+ app.setPath('sessionData',path.join(dataHome,'session'));
+}catch(error){startupError=error;}
+const singleInstance=!startupError&&app.requestSingleInstanceLock();
 let win,store; let queue=Promise.resolve();
 let smokeChoice=null,smokeDestination=null;
 if(process.env.FAMILY_ARCHIVE_SMOKE && !process.env.FAMILY_ARCHIVE_DATA_DIR) throw new Error('Smoke tests require an isolated FAMILY_ARCHIVE_DATA_DIR.');
@@ -21,7 +29,7 @@ function register(method,handler){ipcMain.handle(`family:${method}`,(event,...ar
  if(event.sender!==win?.webContents || event.senderFrame?.parent || !trusted(event.senderFrame?.url)) throw new Error('Недоверенный источник запроса.');
  return serial(()=>handler(...args));
 });}
-async function selectStore(next){await next.archiveIdentity();await atomicWrite(path.join(app.getPath('userData'),'selected-archive.json'),JSON.stringify({root:next.root}));store=next;}
+async function selectStore(next){await next.archiveIdentity();select(app.getPath('userData'),next.root);store=next;}
 async function choose(options){
  if(process.env.FAMILY_ARCHIVE_SMOKE==='all'){const selected=smokeChoice;smokeChoice=null;return {canceled:!selected,filePaths:selected?[selected]:[]};}
  return dialog.showOpenDialog(win,options);
@@ -32,9 +40,7 @@ async function saveDialog(options){
 }
 async function initialize(){
  const home=app.getPath('userData');await fs.mkdir(home,{recursive:true,mode:0o700});
- let root=path.join(home,'archive');
- try{const cfg=JSON.parse(await fs.readFile(path.join(home,'selected-archive.json'),'utf8'));if(typeof cfg.root!=='string')throw new Error('Неверная папка архива.');root=cfg.root;}catch(error){if(error.code!=='ENOENT')throw error;}
- store=new ArchiveStore(root);await store.readArchive();
+ store=new ArchiveStore(selectedRoot(home),{portable:true,dataRoot:home});await store.readArchive();
  protocol.handle('family',async request=>{
   try{
    const u=new URL(request.url);if(u.hostname!=='app'||!['GET','HEAD'].includes(request.method))return new Response('Forbidden',{status:403});
@@ -63,12 +69,16 @@ async function initialize(){
  });
  register('open',async()=>{
   const result=await choose({title:'Открыть папку семейного архива',properties:['openDirectory']});if(result.canceled)return null;
-  const next=new ArchiveStore(result.filePaths[0]);const archive=await next.readArchive();if(!archive)throw new Error('В выбранной папке нет archive.json.');await next.checkMedia(archive);await selectStore(next);return archive;
+  const source=path.resolve(result.filePaths[0]);
+  const home=app.getPath('userData');
+  const next=source.startsWith(home+path.sep)?new ArchiveStore(source,{portable:true,dataRoot:home}):copyArchive(source,path.join(home,'imports'));
+  const archive=await next.readArchive();if(!archive)throw new Error('В выбранной папке нет archive.json.');await next.checkMedia(archive);await selectStore(next);return archive;
  });
  register('import',async()=>{
   const result=await choose({title:'Импортировать семейный архив',properties:['openFile'],filters:[{name:'Семейный архив',extensions:['zip','json']}]});if(result.canceled)return null;
   const file=result.filePaths[0],root=path.join(app.getPath('userData'),'imports');
   const next=path.extname(file).toLowerCase()==='.zip'?await ArchiveStore.importZip(file,root):await ArchiveStore.importJson(file,root);
+  identity(next.root,{dataRoot:app.getPath('userData')});next.portable=true;next.dataRoot=app.getPath('userData');
   const archive=await next.readArchive();await selectStore(next);return archive;
  });
  register('export',async()=>{
@@ -126,5 +136,7 @@ app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 app.on('before-quit',event=>{if(!app._archiveFlushed){event.preventDefault();queue.finally(()=>{app._archiveFlushed=true;app.quit();});}});
 app.on('second-instance',()=>{if(win&&!win.isDestroyed()){if(win.isMinimized())win.restore();win.show();win.focus();}});
 app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0&&store)void createWindow().catch(error=>dialog.showErrorBox('Семейный архив',error.message));});
-if(singleInstance)app.whenReady().then(initialize).catch(error=>{console.error('Family Archive startup:',error.message);if(process.env.FAMILY_ARCHIVE_SMOKE){app.exit(1);return;}dialog.showErrorBox('Семейный архив',`Не удалось открыть архив: ${error.message}`);app.quit();});
+function startupFailure(error){console.error('Family Archive startup:',error.message);if(process.env.FAMILY_ARCHIVE_SMOKE||process.env.FAMILY_ARCHIVE_PORTABLE_QA){app.exit(1);return;}dialog.showErrorBox('Семейный архив',`Не удалось открыть архив: ${error.message}\n\nПоместите приложение в доступную для записи папку. Если переносите данные старой версии, закройте её и восстановите указанный archive.json/медиа из резервной копии, затем повторите запуск. Пустой архив вместо старых данных не создан.`);app.quit();}
+if(startupError)app.whenReady().then(()=>startupFailure(startupError));
+else if(singleInstance)app.whenReady().then(initialize).catch(startupFailure);
 else app.quit();

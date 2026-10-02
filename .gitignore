@@ -2,6 +2,10 @@ tests/screenshots/
 .DS_Store
 *.tmp
 node_modules/
+# Portable development profile contains private family data and Chromium drafts.
+/data/
+/data.stage-*/
+/data.bootstrap-lock
 www/
 dist-desktop/
 .toolchains/
