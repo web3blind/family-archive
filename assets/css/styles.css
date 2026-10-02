@@ -188,6 +188,11 @@ textarea { resize: vertical; min-height: 7rem; }
 .form-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .stacked-form { display: grid; gap: 1rem; }
 .editor-columns { display: grid; grid-template-columns: minmax(220px, 320px) 1fr; gap: 1.25rem; align-items: start; }
+.viewer-story-filters { min-width: 0; margin: 0 0 1rem; padding: .75rem; border: 1px solid #897565; border-radius: .65rem; }
+.viewer-story-filters label { display: flex; align-items: center; gap: .5rem; min-height: 44px; padding: .25rem; font-weight: 400; overflow-wrap: anywhere; }
+.viewer-story-filters input[type="checkbox"] { width: auto; flex: 0 0 auto; margin: 0; }
+.viewer-story-filters label:focus-within { background: #f2e6d5; }
+.viewer-story-filters .button { max-width: 100%; white-space: normal; margin-top: .5rem; }
 .actions { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1rem 0; }
 .compact-actions { margin: 0; justify-content: flex-end; }
 .file-button input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; }

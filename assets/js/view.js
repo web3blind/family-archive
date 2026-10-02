@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   let selectedPersonId = archive.rootPersonId || (archive.people[0] && archive.people[0].id);
   let lastLightboxTrigger = null;
+  const selectedStoryCategories = new Set();
 
   const els = {
     archiveTitle: document.getElementById('archiveTitle'),
@@ -108,9 +109,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
       </div>
       <section aria-labelledby="bioHeading"><h3 id="bioHeading">Короткая биография</h3><p>${escapeHtml(person.bio || 'Биография пока не заполнена.')}</p></section>
-      <section aria-labelledby="storiesDetailHeading"><h3 id="storiesDetailHeading">Истории</h3>${renderStories(stories)}</section>
+      <section aria-labelledby="storiesDetailHeading"><h3 id="storiesDetailHeading">Истории</h3>${renderStoryFilters()}<p id="viewerStoryStatus" class="hint" role="status" aria-atomic="true"></p><div id="viewerStoryResults"></div></section>
       <section aria-labelledby="mediaDetailHeading"><h3 id="mediaDetailHeading">Медиа</h3>${renderMedia(media)}</section>
     </article>`;
+    updateStoryResults(stories);
+  }
+
+  function renderStoryFilters() {
+    const categories = [['', 'Без категории'], ...Object.entries(core.storyCategories)];
+    return `<fieldset id="viewerStoryFilters" class="viewer-story-filters" aria-describedby="viewerStoryFilterHelp"><legend>Категории историй</legend><p id="viewerStoryFilterHelp" class="hint">Можно выбрать несколько категорий. Если ничего не выбрано, показаны все истории человека.</p>${categories.map(([id, label]) => `<label for="viewer-category-${id || 'uncategorized'}"><input id="viewer-category-${id || 'uncategorized'}" type="checkbox" value="${escapeHtml(id)}" ${selectedStoryCategories.has(id) ? 'checked' : ''} aria-controls="viewerStoryResults"><span>${escapeHtml(label)}</span></label>`).join('')}<button id="viewerStoryReset" class="button button-secondary" type="button" aria-controls="viewerStoryResults">Показать все категории</button></fieldset>`;
+  }
+
+  function updateStoryResults(stories) {
+    const matches = selectedStoryCategories.size ? stories.filter(story => selectedStoryCategories.has(story.category || '')) : stories;
+    document.getElementById('viewerStoryStatus').textContent = `Показано историй: ${matches.length} из ${stories.length}.`;
+    document.getElementById('viewerStoryResults').innerHTML = !stories.length ? renderStories([]) : matches.length ? renderStories(matches) : '<p class="empty-state">Нет историй выбранных категорий. Выберите другие категории или покажите все.</p>';
+  }
+
+  function updateSelectedPersonStories() {
+    const person = archive.people.find(item => item.id === selectedPersonId);
+    if (person) updateStoryResults(core.getPersonStories(person, archive.stories));
   }
 
   function renderStories(stories) {
@@ -187,6 +205,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   els.rootSelect.addEventListener('change', () => { selectPerson(els.rootSelect.value); els.rootSelect.focus(); });
   els.peopleSearch.addEventListener('input', renderPeopleList);
+  els.personDetail.addEventListener('change', event => {
+    if (!event.target.matches('#viewerStoryFilters input[type="checkbox"]')) return;
+    if (event.target.checked) selectedStoryCategories.add(event.target.value);
+    else selectedStoryCategories.delete(event.target.value);
+    updateSelectedPersonStories();
+  });
+  els.personDetail.addEventListener('click', event => {
+    if (!event.target.closest('#viewerStoryReset')) return;
+    selectedStoryCategories.clear();
+    els.personDetail.querySelectorAll('#viewerStoryFilters input').forEach(input => { input.checked = false; });
+    updateSelectedPersonStories();
+  });
   document.addEventListener('click', (event) => {
     const documentLink = event.target.closest('[data-document-path]');
     if (documentLink && window.FamilyArchiveNative?.openMedia) {

@@ -1,5 +1,12 @@
 # Проверка семейного архива 0.3.3
 
+## Мультивыбор категорий в просмотре — рабочие исходники, без релиза
+
+- RED: `node --test --test-name-pattern='Chromium viewer categories' tests/editor-ui.test.cjs` — ожидаемые флажки отсутствовали (0 вместо 7). GREEN — passed; финальный `npm test` 67/67, без ошибок/отмен/пропусков.
+- Настоящий Chromium: default all; одна/несколько категорий (OR); старое отсутствие поля и пустая строка в «Без категории»; снятие последней отметки и явный reset; пустые совпадения vs человек без историй; сохранение выбора при смене человека; keyboard Space и сохранение focus; containment fieldset при 320px; точный исходный browser JSON не изменился, Runtime exceptions отсутствуют.
+- `xvfb-run -a node_modules/.bin/electron --no-sandbox tests/editor-electron.cjs` — passed: фильтр после native ZIP/import в viewer, две выбранные категории, empty/reset и точное неизменное read-back ArchiveStore; consoleErrors=[]; прежние сценарии также проходят.
+- `npm run android:sync`; JDK21/SDK `./android/gradlew -p android :app:assembleDebug --no-daemon` — BUILD SUCCESSFUL; view.js/styles.css в APK byte-identical исходникам. Native/schema не менялись. Физический Android/TalkBack, NVDA и Windows/macOS runtime не проверены; версии/подписи/релизы не менялись.
+
 ## Категории историй — рабочие исходники, без нового релиза
 
 - RED: `node --test tests/story-categories.test.cjs` — четыре регрессии воспроизведены до реализации (поле терялось, неизвестные значения не отклонялись, фильтра/меток не было). GREEN — 4/4.

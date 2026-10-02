@@ -1,5 +1,15 @@
 # PLAN.md — Семейное древо
 
+## Фильтр категорий в просмотре — мультивыбор
+
+- Outcome: в историях полной карточки просмотрщика доступны флажки семи вариантов (шесть категорий + Без категории); совпадение с любой выбранной категорией. Ничего не выбрано — все истории. Явная кнопка сброса; выбор сохраняется при смене человека в открытом просмотре, перезагрузка возвращает все категории.
+- Scope: view.js, минимальные scoped CSS, browser/Electron тесты, README/AGENTS/TESTING и Android generated web-assets. Редактор, схема и JS/Java валидаторы не меняются; фильтр не меняет людей, тексты, связи, вложения и JSON архива.
+- Data safety/non-goals: только synthetic fixtures в Hermes scratch, не открывать data/реальные профили; без релиза, версий, signed builds, сервисов, глобальных настроек и миграций.
+- Tasks/verification: RED реальный Chromium: default/single/multiple/uncategorized/reset/empty/person switch/keyboard focus/320px/no archive mutation; GREEN реализация, npm test; real Electron viewer; npm run android:sync и assembleDebug с проверкой source/APK; diff review, commit/push существующего origin/main (deploy automation нет).
+- DoD: перечисленные пользовательские сценарии проверены, консоль без ошибок, controls с label/legend/status; TalkBack/NVDA и реальные OS/device execution не заявлять. Stop: доступ/публикация/изменение реальных данных вне scope.
+- Status: реализовано, self-review завершён. RED→GREEN реальный Chromium, финальный npm test 67/67; настоящий Electron native viewer/unchanged archive/empty/reset прошёл без console errors; Android assets sync + assembleDebug прошли, source/APK совпадают. Runtime controls/focus/Space/320px проверены, реальные data/профили не тронуты. Commit/push в существующий origin/main без релиза.
+
+
 ## Категории историй — согласованный scope
 
 - Outcome: одна необязательная категория истории; фильтр «Все истории» (все / без категории / выбранная категория), подписи в редакторе и просмотре карточки человека.

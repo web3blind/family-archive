@@ -97,6 +97,12 @@ async function main(){
   await win.loadURL('family://app/index.html');await wait(`document.getElementById('personDetail')?.textContent.includes('Синтетическая история')`);await wait('document.querySelector("#personDetail img")?.naturalWidth===1');
   assert.ok(await run('personDetail.textContent.includes("Письма потомкам")'));
   assert.ok(await run('personDetail.textContent.includes("Свидетель") && personDetail.textContent.includes("2001–2003")'));
+  const beforeViewerFilters=await store.readArchive();
+  await click('#viewer-category-letters');assert.equal(await run('viewerStoryResults.querySelectorAll(".story-card").length'),1);
+  await click('#viewer-category-place-home');assert.equal(await run('viewerStoryFilters.querySelectorAll("input:checked").length'),2);
+  await click('#viewer-category-letters');assert.equal(await run('viewerStoryResults.querySelectorAll(".story-card").length'),0);
+  await click('#viewerStoryReset');assert.equal(await run('viewerStoryResults.querySelectorAll(".story-card").length'),1);
+  assert.deepEqual(await store.readArchive(),beforeViewerFilters);
   console.log(JSON.stringify({electron:process.versions.electron,nameOnly:true,parentLinked:true,failedSaveAndReload:true,folderPartial:true,queueRetryAfterReload:true,copiedBytesVerified:true,mainPhotoLoaded:true,storyLinked:true,categoryDraftReload:true,categoryOptional:true,categoryFilterAndSearch:true,categoryClear:true,categoryLabels:true,categoryZipRoundtrip:true,zipExportImport:true,viewer:true,consoleErrors:exceptions}));
   assert.deepEqual(exceptions,[]);
 }

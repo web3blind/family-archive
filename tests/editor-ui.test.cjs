@@ -77,6 +77,37 @@ async function browser(t, native = false) {
     saved:()=>evaluate(`JSON.parse(localStorage.getItem('familyArchive.v1'))`),
     focus:()=>evaluate('document.activeElement.id')};
 }
+test('Chromium viewer categories: multi-selection, uncategorized, reset, keyboard, person switch and no data mutation', {skip:!available,timeout:60000}, async t=>{
+  const b=await browser(t);
+  await b.evaluate(`localStorage.setItem('familyArchive.v1',JSON.stringify({version:1,title:'Synthetic test archive',rootPersonId:'p',people:[{id:'p',fullName:'Первый',storyIds:['letter','home','legacy','empty']},{id:'q',fullName:'Второй',storyIds:['home']},{id:'none',fullName:'Без историй'}],stories:[{id:'letter',title:'Письмо',text:'Письмо потомкам',category:'letters',author:'Автор',date:'2000'},{id:'home',title:'Дом',text:'История дома',category:'place-home'},{id:'legacy',title:'Старая',text:'Без поля категории'},{id:'empty',title:'Пустая',text:'Пустая категория',category:''}],media:[]}));`);
+  const before=await b.saved();await b.navigate('index.html');
+  assert.equal(await b.evaluate('document.querySelectorAll("#viewerStoryFilters input[type=checkbox]").length'),7);
+  assert.equal(await b.evaluate('viewerStoryResults.querySelectorAll(".story-card").length'),4);
+  assert.match(await b.evaluate('viewerStoryFilters.querySelector("legend").textContent'),/Категории/);
+  await b.evaluate('document.getElementById("viewer-category-letters").focus()');await b.click('#viewer-category-letters');assert.equal(await b.evaluate('viewerStoryResults.querySelectorAll(".story-card").length'),1);
+  assert.match(await b.evaluate('viewerStoryResults.textContent'),/Автор.*2000|2000.*Автор/);
+  assert.equal(await b.focus(),'viewer-category-letters');
+  await b.click('#viewer-category-place-home');assert.equal(await b.evaluate('viewerStoryResults.querySelectorAll(".story-card").length'),2);
+  await b.click('#viewer-category-uncategorized');assert.equal(await b.evaluate('viewerStoryResults.querySelectorAll(".story-card").length'),4);
+  await b.click('#viewer-category-letters');await b.click('#viewer-category-place-home');assert.equal(await b.evaluate('viewerStoryResults.querySelectorAll(".story-card").length'),2);
+  await b.click('#viewerStoryReset');assert.equal(await b.evaluate('viewerStoryResults.querySelectorAll(".story-card").length'),4);
+  assert.equal(await b.evaluate('viewerStoryFilters.querySelectorAll("input:checked").length'),0);
+  await b.click('#viewer-category-knowledge');assert.equal(await b.evaluate('viewerStoryResults.querySelectorAll(".story-card").length'),0);
+  assert.match(await b.evaluate('viewerStoryResults.textContent'),/Нет историй выбранных категорий/);
+  await b.click('#viewer-category-knowledge');assert.equal(await b.evaluate('viewerStoryResults.querySelectorAll(".story-card").length'),4);
+  await b.evaluate('document.getElementById("viewer-category-letters").focus()');
+  await b.send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',windowsVirtualKeyCode:32});
+  await b.send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space',windowsVirtualKeyCode:32});
+  assert.equal(await b.evaluate('viewerStoryResults.querySelectorAll(".story-card").length'),1);
+  await b.set('rootSelect','q');assert.equal(await b.evaluate('document.getElementById("viewer-category-letters").checked'),true);
+  assert.equal(await b.evaluate('viewerStoryResults.querySelectorAll(".story-card").length'),0);
+  await b.click('#viewer-category-place-home');assert.equal(await b.evaluate('viewerStoryResults.querySelectorAll(".story-card").length'),1);
+  await b.set('rootSelect','none');assert.match(await b.evaluate('viewerStoryResults.textContent'),/Истории пока не связаны/);
+  await b.set('rootSelect','p');assert.equal(await b.evaluate('viewerStoryResults.querySelectorAll(".story-card").length'),2);
+  await b.send('Emulation.setDeviceMetricsOverride',{width:320,height:640,deviceScaleFactor:1,mobile:false});
+  assert.equal(await b.evaluate('viewerStoryFilters.scrollWidth<=viewerStoryFilters.clientWidth'),true);
+  assert.deepEqual(await b.saved(),before);assert.deepEqual(b.exceptions,[]);
+});
 test('Chromium story categories: optional creation, browser persistence, filtering, legacy draft and JSON export', {skip:!available,timeout:60000}, async t=>{
   const b=await browser(t);
   const old=await b.evaluate(`FamilyArchive.ensureArchiveShape({version:1,title:'Synthetic test archive',people:[],stories:[{id:'legacy',title:'Старая история',text:'Первоначальный текст'}],media:[]})`);
