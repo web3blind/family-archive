@@ -1,13 +1,22 @@
-# Проверка семейного архива 0.3.3
+# Проверка семейного архива 0.3.4
 
-## Мультивыбор категорий в просмотре — рабочие исходники, без релиза
+## Выпуск 0.3.4
+
+- Метаданные: package.json/lock 0.3.4; Android versionName 0.3.4/versionCode 6. APK проверен aapt/apksigner; certificate SHA-256 совпадает с опубликованным APK 0.3.3 (обновление без смены подписи).
+- Финальный npm test после изменений release smoke: 67/67, без ошибок/отмен/пропусков. Android sync/testDebugUnitTest/lintDebug/assembleDebug — BUILD SUCCESSFUL, 25 JVM-тестов без ошибок; часть неизменённых задач использовала Gradle cache.
+- Подготовлены Linux x64, Windows x64, macOS Intel x64/Apple Silicon arm64 и Android APK. Общий вызов desktop-сборок превысил таймаут инструмента, но все процессы завершились и все выходные пакеты присутствуют; не заявляется сохранённый exit code потерянного вызова. Каждый ZIP прошёл testzip, ASAR из самого ZIP совпал с unpacked ASAR, а scripts/verify-packages.cjs подтвердил 12 runtime-файлов и 0.3.4 в каждом ASAR. Внешних data/.env в пакетах нет.
+- APK: все frontend HTML/assets byte-identical исходникам, bundled archive пустой, debug-подпись действительна. Linux ZIP создан до synthetic запуска и сохраняет Unix executable permissions.
+- Настоящий dist-desktop/linux-unpacked/family-archive под Xvfb с отдельным FAMILY_ARCHIVE_DATA_DIR: integrated all + restart passed; два человека, родитель, главное фото, история category=letters, viewer multi-select/reset, ZIP roundtrip, совпадение media bytes, сохранение категории после повторного запуска. Все данные synthetic; реальные пользовательские архивы и legacy-профили не открывались.
+- Windows/macOS runtime, NVDA/TalkBack и физический Android не проверены. Windows/macOS без publisher signing/notarization, APK debug-подписан. Новых изменений storage/миграции нет; прошлые миграционные проверки ниже — исторические, не повторный live cutover.
+
+## Мультивыбор категорий в просмотре — проверки до выпуска
 
 - RED: `node --test --test-name-pattern='Chromium viewer categories' tests/editor-ui.test.cjs` — ожидаемые флажки отсутствовали (0 вместо 7). GREEN — passed; финальный `npm test` 67/67, без ошибок/отмен/пропусков.
 - Настоящий Chromium: default all; одна/несколько категорий (OR); старое отсутствие поля и пустая строка в «Без категории»; снятие последней отметки и явный reset; пустые совпадения vs человек без историй; сохранение выбора при смене человека; keyboard Space и сохранение focus; containment fieldset при 320px; точный исходный browser JSON не изменился, Runtime exceptions отсутствуют.
 - `xvfb-run -a node_modules/.bin/electron --no-sandbox tests/editor-electron.cjs` — passed: фильтр после native ZIP/import в viewer, две выбранные категории, empty/reset и точное неизменное read-back ArchiveStore; consoleErrors=[]; прежние сценарии также проходят.
 - `npm run android:sync`; JDK21/SDK `./android/gradlew -p android :app:assembleDebug --no-daemon` — BUILD SUCCESSFUL; view.js/styles.css в APK byte-identical исходникам. Native/schema не менялись. Физический Android/TalkBack, NVDA и Windows/macOS runtime не проверены; версии/подписи/релизы не менялись.
 
-## Категории историй — рабочие исходники, без нового релиза
+## Категории историй — проверки до выпуска
 
 - RED: `node --test tests/story-categories.test.cjs` — четыре регрессии воспроизведены до реализации (поле терялось, неизвестные значения не отклонялись, фильтра/меток не было). GREEN — 4/4.
 - Финальный `npm test`: 66/66, без ошибок/отмен/пропусков; прежние семь реальных Chromium-сценариев проходят. Дополнительно `node --test --test-name-pattern='Chromium story categories' tests/editor-ui.test.cjs` — passed: старый uncategorized JSON и черновик без поля, создание без категории, сохранение/перезапуск, категория+поиск, JSON-вывод. Новая проверка сначала выявила ошибки тестового seeding (outgoing beforeunload перезаписывал базу черновиков), исправленные без изменения production-кода.

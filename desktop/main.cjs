@@ -95,7 +95,7 @@ async function createWindow(){
  await win.loadURL('family://app/index.html');
  if(process.env.FAMILY_ARCHIVE_SMOKE==='all') {await runIntegratedSmoke();app.quit();return;}
  if(process.env.FAMILY_ARCHIVE_SMOKE==='restart') {
-  const a=await store.readArchive();if(a?.people[0]?.fullName!=='Тестовый родственник'||a.people.length!==2||a.media.length!==1||a.stories.length!==1)throw new Error('Restart lost data');
+  const a=await store.readArchive();if(a?.people[0]?.fullName!=='Тестовый родственник'||a.people.length!==2||a.media.length!==1||a.stories.length!==1||a.stories[0].category!=='letters')throw new Error('Restart lost data');
   console.log('Family Archive restart smoke: '+JSON.stringify({person:a.people[0].fullName,media:a.media.length,root:store.root}));app.quit();return;
  }
  if(process.env.FAMILY_ARCHIVE_SMOKE==='1'){
@@ -123,13 +123,17 @@ async function runIntegratedSmoke(){
  smokeChoice=fixture;await click('[data-action="upload"]');await wait('(await FamilyArchiveNative.readArchive()).media.length===1');
  const stored=await store.readArchive(),photo=stored.media[0];
  await click(`input[name="primaryMediaId"][value="${photo.id}"]`);await run('personForm.requestSubmit()');await wait(`editorStatus.textContent.includes('Карточка сохранена')`);
- await click('#newStoryButton');await set('storyTitle','Проверочная история');await set('storyText','Синтетическое воспоминание');await run('storyForm.requestSubmit()');await wait(`editorStatus.textContent.includes('Карточка сохранена')`);
+ await click('#newStoryButton');await set('storyTitle','Проверочная история');await set('storyText','Синтетическое воспоминание');await set('storyCategory','letters');await run('storyForm.requestSubmit()');await wait(`editorStatus.textContent.includes('Карточка сохранена')`);
  await click('[data-view="settings"]');smokeDestination=path.join(app.getPath('userData'),'export.zip');await click('#exportButton');await wait(`editorStatus.textContent.includes('Полный архив экспортирован')`);
  smokeChoice=smokeDestination;await run('window.confirm=()=>true;undefined');await click('#nativeImportArchiveButton');await wait(`editorStatus.textContent.includes('Полный архив открыт')`);
  const final=await store.readArchive();if(final.people.length!==2||!final.people[0].motherId||final.media.length!==1||final.stories.length!==1)throw new Error('Integrated data mismatch');
  if(!(await fs.readFile(await store.resolveMedia(final.media[0].path))).equals(await fs.readFile(fixture)))throw new Error('Media bytes changed');
  await win.loadURL('family://app/index.html');await wait('document.querySelector("#personDetail img")?.naturalWidth===1');
- console.log('Family Archive integrated Electron smoke: '+JSON.stringify({people:2,parentLinked:true,mainPhoto:true,story:true,zipRoundtrip:true,mediaBytes:true}));
+ if(final.stories[0].category!=='letters')throw new Error('Category lost in ZIP');
+ await click('#viewer-category-place-home');if(await run('viewerStoryResults.querySelectorAll(".story-card").length')!==0)throw new Error('Viewer filter mismatch');
+ await click('#viewer-category-letters');if(await run('viewerStoryResults.querySelectorAll(".story-card").length')!==1)throw new Error('Viewer multiselect mismatch');
+ await click('#viewerStoryReset');if(await run('viewerStoryFilters.querySelectorAll("input:checked").length')!==0)throw new Error('Viewer reset mismatch');
+ console.log('Family Archive integrated Electron smoke: '+JSON.stringify({people:2,parentLinked:true,mainPhoto:true,story:true,category:true,viewerMultiselect:true,zipRoundtrip:true,mediaBytes:true}));
 }
 async function openMedia(url){try{const u=new URL(url);if(u.protocol!=='family:'||u.hostname!=='app')return;const relative=decodeURIComponent(u.pathname.slice(1));const file=await store.resolveMedia(relative);await shell.openPath(file);}catch{/* Untrusted links never leave the application. */}}
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});

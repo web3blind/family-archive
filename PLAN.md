@@ -1,5 +1,14 @@
 # PLAN.md — Семейное древо
 
+## Выпуск 0.3.4 — категории и фильтр просмотра
+
+- Outcome: новый GitHub release v0.3.4 в web3blind/family-archive, Windows x64/Linux x64/macOS Intel+Apple Silicon ZIP, Android APK, SHA256SUMS.txt и TESTING.md.
+- Scope: согласовать package.json/lock и Android versionName 0.3.4/versionCode 6; обновить текущие docs, узко расширить packaged smoke категориями; собрать все существующие платформы; проверить ASAR/APK, synthetic Linux smoke/restart, загрузку release assets и SHA-256. Без новых функций, подписи/магазинов/инфраструктуры.
+- Data safety: не запускать приложение на реальных data/профилях; все smoke только FAMILY_ARCHIVE_DATA_DIR в Hermes scratch. Сборки включают только явный allowlist исходников, без archive.json/media/data/.env/session; ZIP Linux собирать до synthetic запуска, пользовательские каталоги не удалять. Исходное committed дерево можно восстановить из Git; резервный git archive до metadata edits.
+- Verification: предыдущий функциональный npm test 67/67 на b6cb6f5; после smoke edits npm test и targeted Electron; npm run build:linux/windows/mac; Android sync/test/lint/assemble; scripts/verify-packages.cjs все ASAR; APK version/signature/assets; packaged Linux all/restart; release read-back exact tag/target/assets и download SHA-256. Windows/macOS и NVDA/TalkBack/device runtime остаются непроверенными.
+- Stop: missing access, paid/notarization/signing changes, реальный data/migration risk; не публиковать неполный release. Draft→verify assets→publish→read-back. Git commit/push текущего main допустим; user явно поручил выпуск версии.
+- Status: metadata 0.3.4/code6; все пять платформенных пакетов подготовлены и проверены (ZIP integrity, четыре ASAR/12 runtime files, APK source/assets/подпись 0.3.3); финальные npm 67/67 и Android JVM 25/25/lint/build; packaged Linux all/restart с категориями прошли. Документы обновлены. Финальный gate: draft upload→download/hash→publish→read-back (публикацию не считать выполненной до этого).
+
 ## Фильтр категорий в просмотре — мультивыбор
 
 - Outcome: в историях полной карточки просмотрщика доступны флажки семи вариантов (шесть категорий + Без категории); совпадение с любой выбранной категорией. Ничего не выбрано — все истории. Явная кнопка сброса; выбор сохраняется при смене человека в открытом просмотре, перезагрузка возвращает все категории.

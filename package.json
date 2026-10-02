@@ -1,6 +1,6 @@
 {
   "name": "family-archive",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Offline portable family archive for desktop and Android",
   "private": true,
   "main": "desktop/main.cjs",
