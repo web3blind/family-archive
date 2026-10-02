@@ -1,5 +1,16 @@
 # PLAN.md — Семейное древо
 
+## Актуализация AGENTS.md — 2026-10-02
+
+- Status: выполнено; создан `AGENTS.md`, правила сверены с текущими исходниками и TESTING.md. Статические проверки путей, npm-команд, Android-классов и версии прошли; `git diff --check` без ошибок. Runtime-тесты не запускались: изменение только документационное.
+- Outcome: создать отсутствующий проектный `AGENTS.md` по коду 0.3.3 и последней сессии, без изменения приложения и пользовательских данных.
+- Scope: `AGENTS.md` и этот блок плана; прежние секции ниже — исторические планы этапов, их отметки «не опубликовано» не отражают состоявшийся релиз 0.3.3.
+- Содержание: карта frontend/Electron/Android, точные команды, schema v1, привязки медиа/черновиков, переносимое `data/`, безопасная legacy-миграция, границы проверок и сборок.
+- Verification: сверить правила с исходниками, package.json и TESTING.md; проверить пути/команды и `git diff --check`; приложение не пересобирать для документационного изменения.
+- Boundaries: не менять код, README, TESTING.md, версии, релизы, runtime data или другие проекты; не запускать миграцию/приложение на реальном профиле.
+- Definition of Done: инструкции соответствуют текущим исходникам, не повторяют устаревшие ограничения старого MVP; reviewed docs-only commit опубликован в существующий origin/main без нового релиза.
+
+
 ## Portable desktop storage — approved correction
 
 Outcome: executable-adjacent data/ (macOS beside .app), including Chromium session/drafts, archive/media, imports and relative selected archive. First launch creates durable empty archive/config/identity. FAMILY_ARCHIVE_DATA_DIR isolates tests. Browser/Android unchanged. No version bump, commit, push or release.
