@@ -2,9 +2,9 @@
 
 Локальный семейный архив без сервера: просмотр, редактирование, JSON-данные и папка с медиа.
 
-## Приложения desktop и Android (0.3.1)
+## Приложения desktop и Android (0.3.2)
 
-Сборки Windows и Android 0.3.1: https://github.com/web3blind/family-archive/releases/tag/v0.3.1
+Сборки Windows, Linux, macOS (Intel и Apple Silicon) и Android 0.3.2: https://github.com/web3blind/family-archive/releases/tag/v0.3.2
 
 Скачайте один цельный ZIP для своей desktop-платформы и распакуйте его целиком. Android устанавливается из APK. Это тестовая версия: ограничения и выполненные проверки перечислены в `TESTING.md`.
 

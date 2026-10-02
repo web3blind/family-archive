@@ -151,6 +151,9 @@ textarea { resize: vertical; min-height: 7rem; }
 .meta { color: var(--muted); font-family: system-ui, sans-serif; font-size: .95rem; }
 
 .detail-card { display: grid; gap: 1rem; }
+/* Preserve authored paragraphs without treating family text as HTML. */
+.detail-card section > p, .story-card > p:not(.meta) { white-space: pre-wrap; overflow-wrap: anywhere; }
+.media-card { min-width: 0; overflow-wrap: anywhere; }
 .detail-header { display: grid; grid-template-columns: minmax(110px, 180px) 1fr; gap: 1.25rem; align-items: start; }
 .detail-header img { width: 100%; border-radius: 1.2rem; border: 1px solid var(--line); background: var(--paper-strong); }
 .fact-list { display: grid; grid-template-columns: max-content 1fr; gap: .4rem .8rem; }
@@ -165,8 +168,8 @@ textarea { resize: vertical; min-height: 7rem; }
 .tree-node button { background: none; border: 0; color: var(--accent-dark); text-decoration: underline; cursor: pointer; padding: .1rem; font-weight: 700; }
 .unknown { color: var(--muted); font-style: italic; }
 
-.media-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .85rem; }
-.media-card { border: 1px solid var(--line); border-radius: 1rem; padding: .75rem; background: #fffdf7; }
+.media-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: .85rem; }
+.media-card { margin: 0; border: 1px solid var(--line); border-radius: 1rem; padding: .75rem; background: #fffdf7; }
 .media-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: .8rem; }
 .media-card audio, .media-card video { width: 100%; margin-top: .5rem; border-radius: .8rem; }
 .media-card video { background: #1f1711; max-height: 20rem; }
@@ -241,6 +244,7 @@ textarea { resize: vertical; min-height: 7rem; }
 .person-editor #main { outline-offset: 5px; }
 .person-editor #screenHeading { margin-top: 1rem; scroll-margin-top: 1rem; }
 @media (max-width: 600px) {
+  .media-grid { grid-template-columns: 1fr; }
   .choice-list { grid-template-columns: 1fr; }
   .person-editor .site-header { padding: 1.2rem 1rem; }
   .person-editor .editor-nav .button { flex: 1 1 140px; }

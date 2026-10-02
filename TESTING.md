@@ -1,4 +1,4 @@
-# Проверка семейного архива 0.3.1
+# Проверка семейного архива 0.3.2
 
 ## Подтверждённые проверки
 
@@ -9,7 +9,7 @@
 - Исходное и упакованное Linux-приложение: integrated smoke и restart прошли; реальный main IPC, протокол, сохранение, родитель, фото, история, ZIP и перезапуск. Выбор файлов в smoke подставлен, а не проверен вручную.
 - Android `testDebugUnitTest lintDebug assembleDebug`: успешно; 24 JVM-теста без ошибок. Lint-предупреждения библиотек/ресурсов не скрывались. Web-assets синхронизированы после окончательных исправлений.
 - Native identity, storage limits, symlinks, exclusive file copies и отмены покрыты регрессиями. Старый portable schema v1 сохранён.
-- Windows ZIP проверяется на целостность, длинные пути и отсутствие Android build-файлов. Runtime-файлы ASAR сверяются с исходниками; APK web-assets сверяются с исходниками. Android versionCode 3 / versionName 0.3.1.
+- Windows ZIP проверяется на целостность, длинные пути и отсутствие Android build-файлов. Runtime-файлы ASAR сверяются с исходниками; APK web-assets сверяются с исходниками. Android versionCode 4 / versionName 0.3.2.
 
 - Дополнительно: изоляция файлов ребёнка/матери, явное добавление общего фото из библиотеки, отмена без изменений, снятие связи без удаления файла и чужих связей, восстановление черновика, keyboard/focus и 320px диалог.
 
@@ -18,6 +18,17 @@
 - Реальные Windows/Android устройства, OS file/provider диалоги и NVDA/TalkBack пока не проверены. DOM/keyboard/accessible-name проверки не заменяют скринридер.
 - APK подписан debug-ключом; Windows без издательской подписи. Магазины/автообновление не реализованы.
 - Работа не названа прототипом, но автоматические проверки не означают доказанную production-надёжность на непроверенных устройствах.
+
+## Визуальная проверка Linux-приложения
+
+- Проверено реальное `dist-desktop/linux-unpacked/family-archive` (HEAD `f121f2b`): production main/preload/protocol/ArchiveStore. До проверки шесть ключевых файлов ASAR совпадали с исходниками.
+- Изолированные Xvfb/profile/archive: `/home/assistent/.hermes/cache/scratch/family-visual-qa`; настоящие пользовательские архивы не открывались. Семья создана действиями редактора, без seed: 7 людей, 3 поколения, 2 родительские ветви, 1 длинная история, 2 синтетические иллюстрации, WAV и TXT. Общее фото добавлено матери именно через библиотечный диалог, сохранены две связи.
+- 35 PNG и 6 контактных листов: `/home/assistent/.hermes/media_cache/family-visual-qa`. Все сценарии осмотрены через vision; inventory содержит имена, размеры, сценарии и выводы. Окно 1100×820 (content 1100×793), реальное небольшое окно 480×640 (content 480×613); отдельно reflow 550×390 @2x, не настоящий OS zoom.
+- Найдены два материальных дефекта: абзацы биографии/истории визуально склеивались; длинный путь аудиофайла выходил из media-card. Исправлены только CSS `white-space: pre-wrap`, `overflow-wrap: anywhere`, `min-width: 0`. После исправления абзацы и containment подтверждены скриншотами 29–32 и rendered assertions в двух размерах.
+- Первоначально исправления проверены через `webContents.insertCSS`. Затем Linux ASAR и tar.gz пересобраны из исходников; `verify-packages.cjs` подтвердил совпадение 11 runtime-файлов. Повторный запуск пересобранного приложения с тестовой семьёй подтвердил сохранение абзацев и отсутствие переполнения при 1100px и 480px, без overlay. Дополнительно устранены стандартные отступы figure и тесная сетка медиа: плеер занимает 448px/339px, на узком экране карточки идут одной колонкой. Скриншоты `rebuilt-media-1100.png` и `rebuilt-media-480.png`. GitHub release 0.3.2 подготовлен из одних исходников для Windows, Linux, macOS Intel/Apple Silicon и Android; содержимое всех четырёх desktop ASAR и web-assets APK сверено с исходниками перед публикацией.
+- `node /home/assistent/.hermes/cache/scratch/family-visual-qa/qa.cjs`: успешно; результаты, synthetic archive, AX names, Tab/Escape/focus restore и загрузка/play/pause 2-секундного аудио сохранены рядом со скриншотами. `xvfb-run -a node_modules/.bin/electron --no-sandbox tests/visual-layout-electron.cjs`: passed, 1100px/480px, сохранение абзацев, нет overflow media/page. `npm test`: 44 passed, 0 failed/skipped.
+- Native file chooser не удалось автоматизировать под Xvfb: только результат `dialog.showOpenDialog` подставлен через изолированный main inspector; настоящий import IPC/store/copy работал. Документ присутствует и связан, запуск внешнего приложения для TXT не выполнялся. Иллюстрации — явно DEMO, не реальные фото; thumbnail crop ожидаем, полные фото пропорциональны. Длинные имена/карточки и вложенное древо требуют вертикальной прокрутки, это не clipping. На узком native select длинное имя визуально сокращается; полное имя есть в карточке/accessible name.
+- Скринридеры NVDA/TalkBack, физические устройства и настоящий системный zoom не проверялись. Данная проверка — визуальная и ограниченная keyboard/AX, не полная WCAG-сертификация.
 
 ## Обновление и проверка
 
