@@ -60,12 +60,44 @@ async function main(){
   for(const m of media)assert.deepEqual(await fs.readFile(await store.resolveMedia(m.path)),await fs.readFile(path.join(fixtures,m.type==='photo'?'synthetic.gif':'synthetic.txt')));
   await click(`input[name="primaryMediaId"][value="${photo.id}"]`);await submit('personForm');await wait(`editorStatus.textContent.includes('Карточка сохранена')`);
   await wait('document.querySelector("img.editor-photo")?.naturalWidth===1');
-  await click('#newStoryButton');await set('storyTitle','Синтетическая история');await set('storyText','Полностью синтетическое воспоминание.');await submit('storyForm');await wait(`editorStatus.textContent.includes('Карточка сохранена')`);
+  await click('#newStoryButton');assert.equal(await run('storyCategory.value'),'');
+  assert.equal(await run('storyCategory.labels[0].textContent.includes("Категория")'),true);
+  assert.equal(await run('storyCategory.required'),false);
+  await set('storyTitle','Синтетическая история');await set('storyText','Полностью синтетическое воспоминание.');
+  await set('storyAuthor','Свидетель');await set('storyDate','2001–2003');await set('storyCategory','letters');
+  // A failed native write must retain the category draft through renderer restart.
+  failWrite=true;await submit('storyForm');await wait(`entityError.textContent.includes('Synthetic write failure')`);
+  await win.reload();await wait(`editorStatus.textContent.includes('Редактор готов')`);assert.equal(await run('storyCategory.value'),'letters');
+  await submit('storyForm');await wait(`editorStatus.textContent.includes('Карточка сохранена')`);
+  const savedStory=(await store.readArchive()).stories[0];assert.equal(savedStory.category,'letters');assert.equal(savedStory.author,'Свидетель');assert.equal(savedStory.date,'2001–2003');assert.deepEqual(savedStory.personIds,[child.id]);
+  await click('[data-action="backPerson"]');assert.ok(await run(`document.querySelector('[aria-labelledby="personStoriesHeading"]').textContent.includes('Письма потомкам')`));
+  await click('[data-view="stories"]');assert.equal(await run('storyCategoryFilter.labels[0].textContent.includes("Категория историй")'),true);
+  await click('#newStoryButton');await set('storyTitle','Без категории');await set('storyText','Синтетический текст без категории');await submit('storyForm');await wait(`editorStatus.textContent.includes('Карточка сохранена')`);
+  await click('[data-view="stories"]');await click('#newStoryButton');await set('storyTitle','Дом семьи');await set('storyText','Синтетическая история дома');await set('storyCategory','place-home');await submit('storyForm');await wait(`editorStatus.textContent.includes('Карточка сохранена')`);
+  await click('[data-view="stories"]');assert.equal(await run('entryResults.querySelectorAll("li").length'),3);
+  await set('storyCategoryFilter','letters');assert.equal(await run('entryResults.querySelectorAll("li").length'),1);
+  assert.ok(await run('entryResults.textContent.includes("Синтетическая история")'));
+  await set('librarySearch','Дом');assert.equal(await run('entryResults.querySelectorAll("li").length'),0);
+  await set('storyCategoryFilter','place-home');assert.equal(await run('entryResults.querySelectorAll("li").length'),1);
+  await set('librarySearch','');await set('storyCategoryFilter','');assert.equal(await run('entryResults.querySelectorAll("li").length'),1);
+  assert.ok(await run('entryResults.textContent.includes("Без категории")'));
+  await set('storyCategoryFilter','knowledge');assert.equal(await run('entryResults.querySelectorAll("li").length'),0);
+  await set('storyCategoryFilter','all');assert.equal(await run('entryResults.querySelectorAll("li").length'),3);
+  // Remove an assignment and set it again through the actual editor.
+  await click(`[data-action="open"][data-id="${savedStory.id}"]`);await set('storyCategory','');await submit('storyForm');await wait(`editorStatus.textContent.includes('Карточка сохранена')`);
+  assert.equal((await store.readArchive()).stories[0].category,'');
+  await set('storyCategory','letters');await submit('storyForm');await wait(`editorStatus.textContent.includes('Карточка сохранена')`);
+  await click('[data-view="stories"]');await set('storyCategoryFilter','letters');await win.reload();await wait(`editorStatus.textContent.includes('Редактор готов')`);assert.equal(await run('storyCategoryFilter.value'),'letters');assert.equal(await run('entryResults.querySelectorAll("li").length'),1);
   await click('[data-view="settings"]');destination=path.join(temporary,'export.zip');await click('#exportButton');await wait(`editorStatus.textContent.includes('Полный архив экспортирован')`);assert.ok((await fs.stat(destination)).size>0);
   await run('window.confirm=()=>true;undefined');await click('#nativeImportArchiveButton');await wait(`editorStatus.textContent.includes('Полный архив открыт')`);
-  assert.equal((await store.readArchive()).people.length,2);assert.equal((await store.readArchive()).stories.length,1);assert.equal((await store.readArchive()).media.length,2);
+  assert.equal((await store.readArchive()).people.length,2);assert.equal((await store.readArchive()).stories.length,3);assert.equal((await store.readArchive()).media.length,2);
+  const importedStories=(await store.readArchive()).stories;
+  assert.deepEqual(importedStories.map(s=>s.category),['letters','','place-home']);
+  assert.deepEqual(importedStories[0],savedStory);
   await win.loadURL('family://app/index.html');await wait(`document.getElementById('personDetail')?.textContent.includes('Синтетическая история')`);await wait('document.querySelector("#personDetail img")?.naturalWidth===1');
-  console.log(JSON.stringify({electron:process.versions.electron,nameOnly:true,parentLinked:true,failedSaveAndReload:true,folderPartial:true,queueRetryAfterReload:true,copiedBytesVerified:true,mainPhotoLoaded:true,storyLinked:true,zipExportImport:true,viewer:true,consoleErrors:exceptions}));
+  assert.ok(await run('personDetail.textContent.includes("Письма потомкам")'));
+  assert.ok(await run('personDetail.textContent.includes("Свидетель") && personDetail.textContent.includes("2001–2003")'));
+  console.log(JSON.stringify({electron:process.versions.electron,nameOnly:true,parentLinked:true,failedSaveAndReload:true,folderPartial:true,queueRetryAfterReload:true,copiedBytesVerified:true,mainPhotoLoaded:true,storyLinked:true,categoryDraftReload:true,categoryOptional:true,categoryFilterAndSearch:true,categoryClear:true,categoryLabels:true,categoryZipRoundtrip:true,zipExportImport:true,viewer:true,consoleErrors:exceptions}));
   assert.deepEqual(exceptions,[]);
 }
 main().then(()=>app.exit(0)).catch(error=>{console.error(error.stack);app.exit(1);});

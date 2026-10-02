@@ -1,5 +1,13 @@
 # Проверка семейного архива 0.3.3
 
+## Категории историй — рабочие исходники, без нового релиза
+
+- RED: `node --test tests/story-categories.test.cjs` — четыре регрессии воспроизведены до реализации (поле терялось, неизвестные значения не отклонялись, фильтра/меток не было). GREEN — 4/4.
+- Финальный `npm test`: 66/66, без ошибок/отмен/пропусков; прежние семь реальных Chromium-сценариев проходят. Дополнительно `node --test --test-name-pattern='Chromium story categories' tests/editor-ui.test.cjs` — passed: старый uncategorized JSON и черновик без поля, создание без категории, сохранение/перезапуск, категория+поиск, JSON-вывод. Новая проверка сначала выявила ошибки тестового seeding (outgoing beforeunload перезаписывал базу черновиков), исправленные без изменения production-кода.
+- `xvfb-run -a node_modules/.bin/electron --no-sandbox tests/editor-electron.cjs` — passed: реальный preload/store, необязательный label/select, сохранение категории, отказ записи и восстановление через reload, смена/снятие категории, фильтр+поиск, сохранение фильтра, подписи в карточке, ZIP→import→viewer; автор/дата/текст/связи сохранены, `consoleErrors: []`. Synthetic write failure — намеренный fixture.
+- `npm run android:sync`; `JAVA_HOME=/home/assistent/.hermes/cache/scratch/family-jdk21 ANDROID_HOME=/home/assistent/android-sdk ./android/gradlew -p android :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --no-daemon` — BUILD SUCCESSFUL. 25 JVM-тестов без ошибок/пропусков, включая category write/restart/ZIP/clear/legacy; общий JS/Java корпус расширен до 47 архивов. Четыре изменённых frontend JS в APK byte-identical исходникам. Сборка debug; версия/подпись не менялись.
+- Все сценарии изолированы и используют синтетические данные. Реальные архивы/профили не открывались. NVDA/TalkBack, физический Android, Windows/macOS runtime и новые desktop-пакеты не проверены/не подготовлены; опубликованная 0.3.3 остаётся без категорий. Старый frontend при пересохранении может удалить новое поле — предупреждение есть в README.
+
 ## Переносимый desktop — 0.3.3
 
 - `npm test`: 61 passed, 0 failed/cancelled/skipped. Из них 17 filesystem-регрессий: пути Windows/Linux/macOS, первая инициализация, перенос папки, полный профиль и выбранный внешний архив, исходные identity/старые imports, испорченный JSON/пропавшие media, symlinks, приоритет существующей data, чужие копии и смена поколения, живая/мёртвая bootstrap-блокировка, SIGKILL во время копирования и безопасный повтор, запрет вложения назначения в источник.

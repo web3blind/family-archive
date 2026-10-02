@@ -1,5 +1,19 @@
 (function (global) {
   const STORAGE_KEY = 'familyArchive.v1';
+  const storyCategories = Object.freeze({
+    'family-stories': 'Семейные истории',
+    letters: 'Письма потомкам',
+    knowledge: 'Семейные знания',
+    'place-home': 'Место и дом',
+    'plans-results': 'Замыслы и итоги',
+    'book-introduction': 'Начало родовой книги'
+  });
+  function storyCategoryLabel(category) {
+    return Object.hasOwn(storyCategories, category || '') ? storyCategories[category] : 'Без категории';
+  }
+  function filterStoriesByCategory(stories, category = 'all') {
+    return stories.filter(story => category === 'all' || (story.category || '') === category);
+  }
 
   const fallbackArchive = {
     version: 1,
@@ -61,7 +75,8 @@
       })),
       stories: (source.stories || []).map((s) => ({
         id: id(s?.id, 'История'), title: text(s.title, 'Заголовок истории'), text: text(s.text, 'Текст истории'),
-        personIds: ids(s.personIds, 'Люди истории'), date: text(s.date, 'Дата истории'), author: text(s.author, 'Автор'), mediaIds: ids(s.mediaIds, 'Медиа истории')
+        personIds: ids(s.personIds, 'Люди истории'), date: text(s.date, 'Дата истории'), author: text(s.author, 'Автор'), mediaIds: ids(s.mediaIds, 'Медиа истории'),
+        ...(s.category == null ? {} : { category: text(s.category, 'Категория истории') })
       })),
       media: (source.media || []).map((m) => ({
         id: id(m?.id, 'Медиа'), type: text(m.type, 'Тип медиа', 'photo'), title: text(m.title, 'Название медиа'),
@@ -86,7 +101,10 @@
       if (p.primaryMediaId && maps.media.get(p.primaryMediaId).type !== 'photo') throw new Error('Главное медиа должно быть фото.');
       checkMany(p.storyIds, maps.stories, 'История человека'); checkMany(p.mediaIds, maps.media, 'Медиа человека');
     }
-    for (const s of normalized.stories) { checkMany(s.personIds, maps.people, 'Человек истории'); checkMany(s.mediaIds, maps.media, 'Медиа истории'); }
+    for (const s of normalized.stories) {
+      if (s.category && !Object.hasOwn(storyCategories, s.category)) throw new Error('Категория истории: неизвестная категория.');
+      checkMany(s.personIds, maps.people, 'Человек истории'); checkMany(s.mediaIds, maps.media, 'Медиа истории');
+    }
     for (const m of normalized.media) {
       if (!['photo', 'audio', 'video', 'document'].includes(m.type)) throw new Error('Неизвестный тип медиа.');
       if (!validMediaPath(m.path) || !/\.(jpg|jpeg|png|gif|webp|avif|bmp|svg|heic|heif|mp3|m4a|wav|ogg|opus|flac|aac|mp4|webm|mov|mkv|m4v|avi|pdf|txt|md|rtf|doc|docx|odt|xls|xlsx|ppt|pptx|csv)$/i.test(m.path)) throw new Error(`Небезопасный или неподдерживаемый путь медиа: ${m.path}.`);
@@ -221,6 +239,9 @@
 
   const api = {
     STORAGE_KEY,
+    storyCategories,
+    storyCategoryLabel,
+    filterStoriesByCategory,
     fallbackArchive,
     deepClone,
     ensureArchiveShape,

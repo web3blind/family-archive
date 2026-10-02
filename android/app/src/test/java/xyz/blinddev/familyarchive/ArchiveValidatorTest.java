@@ -9,6 +9,29 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
 public class ArchiveValidatorTest {
+    @Test public void storyCategoriesSurviveSaveRestartAndZipWithoutChangingContent() throws Exception {
+        JSONObject source = new JSONObject("{\"version\":1,\"stories\":[{\"id\":\"s\",\"title\":\"Letter\",\"text\":\"Do not forget: a memory, not a proven fact.\",\"author\":\"Witness\",\"date\":\"2001-2003\",\"category\":\"letters\"}]}");
+        File root = Files.createTempDirectory("family-category").toFile();
+        ArchiveStore store = new ArchiveStore(root); store.write(source);
+        JSONObject saved = new ArchiveStore(root).read().getJSONArray("stories").getJSONObject(0);
+        assertEquals("letters", saved.getString("category"));
+        assertEquals("Witness", saved.getString("author"));
+        assertEquals("2001-2003", saved.getString("date"));
+        assertEquals("Do not forget: a memory, not a proven fact.", saved.getString("text"));
+        ByteArrayOutputStream zip = new ByteArrayOutputStream(); store.exportZip(zip);
+        ArchiveStore copy = new ArchiveStore(Files.createTempDirectory("family-category-copy").toFile());
+        copy.importZip(new ByteArrayInputStream(zip.toByteArray()));
+        JSONObject imported = copy.read().getJSONArray("stories").getJSONObject(0);
+        assertEquals(saved.length(), imported.length());
+        for (java.util.Iterator<String> keys = saved.keys(); keys.hasNext();) {
+            String key = keys.next(); assertEquals(saved.get(key).toString(), imported.get(key).toString());
+        }
+        JSONObject cleared = copy.read(); cleared.getJSONArray("stories").getJSONObject(0).put("category", ""); copy.write(cleared);
+        assertEquals("", copy.read().getJSONArray("stories").getJSONObject(0).getString("category"));
+        JSONObject legacy = new JSONObject("{\"stories\":[{\"id\":\"old\",\"text\":\"Old story\"}]}");
+        assertFalse(ArchiveValidator.normalize(legacy).getJSONArray("stories").getJSONObject(0).has("category"));
+    }
+
     @Test public void commonJavaScriptAndAndroidValidationCorpus() throws Exception {
         byte[] bytes = Files.readAllBytes(new File(System.getProperty("family.archive.fixtures")).toPath());
         JSONArray cases = new JSONArray(new String(bytes, StandardCharsets.UTF_8));

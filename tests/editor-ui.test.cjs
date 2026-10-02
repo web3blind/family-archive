@@ -77,6 +77,23 @@ async function browser(t, native = false) {
     saved:()=>evaluate(`JSON.parse(localStorage.getItem('familyArchive.v1'))`),
     focus:()=>evaluate('document.activeElement.id')};
 }
+test('Chromium story categories: optional creation, browser persistence, filtering, legacy draft and JSON export', {skip:!available,timeout:60000}, async t=>{
+  const b=await browser(t);
+  const old=await b.evaluate(`FamilyArchive.ensureArchiveShape({version:1,title:'Synthetic test archive',people:[],stories:[{id:'legacy',title:'Старая история',text:'Первоначальный текст'}],media:[]})`);
+  // Seed before the new editor starts: the outgoing page's beforeunload writes its own draft database.
+  await b.send('Page.addScriptToEvaluateOnNewDocument',{source:`if(!localStorage.getItem('__legacySeeded')){const a=${JSON.stringify(old)};localStorage.setItem('__legacySeeded','yes');localStorage.setItem('familyArchive.v1',JSON.stringify(a));localStorage.setItem('familyArchive.editorDrafts.v1',JSON.stringify({version:1,sessions:[{base:JSON.stringify(a),label:a.title,native:false,archiveIdentity:null,drafts:{people:{},stories:{legacy:{...a.stories[0],text:'Старый несохранённый текст'}},media:{}},view:{type:'story',id:'legacy'},settings:{title:a.title},pendingUploads:[]}]}));}`});
+  await b.evaluate('screenHeading.remove()');await b.navigate();await b.wait('document.getElementById("storyText")');assert.equal(await b.evaluate('storyText.value'),'Старый несохранённый текст');assert.equal(await b.evaluate('storyCategory.value'),'');
+  assert.equal(Object.hasOwn(old.stories[0],'category'),false);
+  await b.set('storyCategory','letters');await b.submit('storyForm');await b.wait(`editorStatus.textContent.includes('Карточка сохранена')`);
+  assert.equal((await b.saved()).stories[0].category,'letters');assert.equal((await b.saved()).stories[0].text,'Старый несохранённый текст');
+  await b.evaluate('screenHeading.remove()');await b.navigate();assert.equal(await b.evaluate('storyCategory.value'),'letters');
+  await b.click('[data-view="stories"]');await b.click('#newStoryButton');await b.set('storyTitle','Дом');await b.set('storyText','История дома');await b.submit('storyForm');await b.wait(`editorStatus.textContent.includes('Карточка сохранена')`);
+  await b.click('[data-view="stories"]');await b.set('storyCategoryFilter','');assert.equal(await b.evaluate('entryResults.querySelectorAll("li").length'),1);
+  await b.set('storyCategoryFilter','letters');assert.equal(await b.evaluate('entryResults.querySelectorAll("li").length'),1);
+  await b.set('librarySearch','Дом');assert.equal(await b.evaluate('entryResults.querySelectorAll("li").length'),0);
+  await b.click('[data-view="settings"]');const exported=await b.evaluate('JSON.parse(jsonOutput.value)');assert.equal(exported.stories[0].category,'letters');assert.equal(exported.stories[1].category,'');
+  assert.deepEqual(b.exceptions,[]);
+});
 test('Chromium connected browser: family, parents, cycles, drafts, file batches, main photo, stories, viewer, JSON', {skip:!available,timeout:60000}, async t=>{
   const b=await browser(t);
   assert.match(await b.evaluate('document.body.innerText'), /В семье пока нет карточек/);

@@ -692,5 +692,225 @@
         }
       ]
     }
+  },
+  {
+    "label": "story category absent",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "people": [],
+      "stories": [
+        {
+          "id": "s",
+          "title": "Story",
+          "text": "Synthetic"
+        }
+      ],
+      "media": []
+    }
+  },
+  {
+    "label": "story category empty",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "people": [],
+      "stories": [
+        {
+          "id": "s",
+          "title": "Story",
+          "text": "Synthetic",
+          "category": ""
+        }
+      ],
+      "media": []
+    }
+  },
+  {
+    "label": "story category family-stories",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "people": [],
+      "stories": [
+        {
+          "id": "s",
+          "title": "Story",
+          "text": "Synthetic",
+          "category": "family-stories"
+        }
+      ],
+      "media": []
+    }
+  },
+  {
+    "label": "story category letters",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "people": [],
+      "stories": [
+        {
+          "id": "s",
+          "title": "Story",
+          "text": "Synthetic",
+          "category": "letters"
+        }
+      ],
+      "media": []
+    }
+  },
+  {
+    "label": "story category knowledge",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "people": [],
+      "stories": [
+        {
+          "id": "s",
+          "title": "Story",
+          "text": "Synthetic",
+          "category": "knowledge"
+        }
+      ],
+      "media": []
+    }
+  },
+  {
+    "label": "story category place-home",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "people": [],
+      "stories": [
+        {
+          "id": "s",
+          "title": "Story",
+          "text": "Synthetic",
+          "category": "place-home"
+        }
+      ],
+      "media": []
+    }
+  },
+  {
+    "label": "story category plans-results",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "people": [],
+      "stories": [
+        {
+          "id": "s",
+          "title": "Story",
+          "text": "Synthetic",
+          "category": "plans-results"
+        }
+      ],
+      "media": []
+    }
+  },
+  {
+    "label": "story category book-introduction",
+    "valid": true,
+    "archive": {
+      "version": 1,
+      "people": [],
+      "stories": [
+        {
+          "id": "s",
+          "title": "Story",
+          "text": "Synthetic",
+          "category": "book-introduction"
+        }
+      ],
+      "media": []
+    }
+  },
+  {
+    "label": "story category unknown",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "people": [],
+      "stories": [
+        {
+          "id": "s",
+          "title": "Story",
+          "text": "Synthetic",
+          "category": "custom"
+        }
+      ],
+      "media": []
+    }
+  },
+  {
+    "label": "story category numeric",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "people": [],
+      "stories": [
+        {
+          "id": "s",
+          "title": "Story",
+          "text": "Synthetic",
+          "category": 42
+        }
+      ],
+      "media": []
+    }
+  },
+  {
+    "label": "story category object",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "people": [],
+      "stories": [
+        {
+          "id": "s",
+          "title": "Story",
+          "text": "Synthetic",
+          "category": {}
+        }
+      ],
+      "media": []
+    }
+  },
+  {
+    "label": "story category array",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "people": [],
+      "stories": [
+        {
+          "id": "s",
+          "title": "Story",
+          "text": "Synthetic",
+          "category": []
+        }
+      ],
+      "media": []
+    }
+  },
+  {
+    "label": "story category boolean",
+    "valid": false,
+    "archive": {
+      "version": 1,
+      "people": [],
+      "stories": [
+        {
+          "id": "s",
+          "title": "Story",
+          "text": "Synthetic",
+          "category": true
+        }
+      ],
+      "media": []
+    }
   }
 ]

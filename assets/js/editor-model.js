@@ -11,7 +11,7 @@
   };
   function empty(kind, id = core.createId(kind.slice(0,-1))) {
     if (kind === 'people') return {id,fullName:'',birthDate:'',deathDate:'',country:'',place:'',motherId:null,fatherId:null,primaryMediaId:'',rememberFor:'',bio:'',storyIds:[],mediaIds:[]};
-    if (kind === 'stories') return {id,title:'',text:'',date:'',author:'',personIds:[],mediaIds:[]};
+    if (kind === 'stories') return {id,title:'',text:'',date:'',author:'',category:'',personIds:[],mediaIds:[]};
     if (kind === 'media') return {id,title:'',type:'photo',path:'',personIds:[],storyIds:[]};
     throw new Error('Неизвестная карточка.');
   }

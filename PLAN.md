@@ -1,5 +1,18 @@
 # PLAN.md — Семейное древо
 
+## Категории историй — согласованный scope
+
+- Outcome: одна необязательная категория истории; фильтр «Все истории» (все / без категории / выбранная категория), подписи в редакторе и просмотре карточки человека.
+- Категории: Семейные истории; Письма потомкам; Семейные знания; Место и дом; Замыслы и итоги; Начало родовой книги. Без тегов, отдельных форм, пользовательских категорий и автоматической классификации.
+- Contract: сохранить schema v1, авторов/даты/тексты/связи/медиа, native/browser сохранение и черновики. Старое отсутствие поля категории сохранять при нормализации, чтобы не менять identity/base существующих черновиков; пустая категория означает «Без категории». Стабильные строковые ID, JS/Java согласованный валидатор; старые версии приложения категории не поддерживают.
+- Boundaries: только family-tree исходники, согласованные тесты, документация и generated Android web-assets. Не менять реальные архивы/data, версии, подписи, релизы или другие проекты. Изменение исходников не выпускает новую версию приложения.
+- Data safety: все runtime проверки исключительно с синтетическими архивами в Hermes scratch; production/service действия и миграции не нужны, пользовательские data/профили не открывать.
+- Tasks: RED проверки сохранения/отказа некорректной категории; core/model/JS+Java поля; accessible select и фильтр с поиском; native ZIP/reload/view flow; sync Android assets; review diff и commit/push после проверок при отсутствии deploy automation.
+- Verification: node --test tests/story-categories.test.cjs; npm test; xvfb-run -a node_modules/.bin/electron --no-sandbox tests/editor-electron.cjs (реальный renderer → preload → store → ZIP → import → viewer); Android JVM tests/lint/compile при доступном SDK/JDK; git diff --check. Проверить отсутствие консольных ошибок и доступные label/select/status; NVDA/TalkBack и Windows/macOS runtime не заявлять.
+- Stop_when: необходимость менять чужие/реальные архивы, оплачивать инфраструктуру, публиковать релиз либо менять подпись; неизвестные локальные изменения не включать в commit.
+- Status: реализовано и self-review пройден. Финальный npm test 66/66; targeted category core 4/4; real Electron flow прошёл (consoleErrors=[]), browser legacy draft/category/search/export прошёл; Android sync + 25 JVM tests + lint + assembleDebug успешны, JS в APK совпадает с исходниками. git diff --check без ошибок. Данные пользователей/версии/релизы не менялись; новые desktop-пакеты и реальные NVDA/TalkBack/device/Windows/macOS runtime вне этой проверки. Изменения готовы к commit/push существующего origin/main без deploy automation.
+
+
 ## Очистка сборочных остатков — 2026-10-02
 
 - Дополнительная очистка выполнена: все три разрешённые цели удалены, освобождено ещё 835.7 MiB, свободно 47.01 GiB; открытых файлов процессов в целях не найдено, tracked-файлы не изменились. Сохранение 0.2.0 из предыдущего прохода ниже — историческая отметка, теперь отменена прямым разрешением и проверкой ASAR.

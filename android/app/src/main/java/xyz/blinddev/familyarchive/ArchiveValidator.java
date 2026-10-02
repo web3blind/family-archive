@@ -69,6 +69,11 @@ final class ArchiveValidator {
         }
         for (JSONObject s : stories.values()) {
             for (String key : new String[]{"title","text","date","author"}) text(s,key,"");
+            if (!absent(s.opt("category"))) {
+                String category = text(s,"category","");
+                if (!java.util.Arrays.asList("", "family-stories", "letters", "knowledge", "place-home", "plans-results", "book-introduction").contains(category))
+                    throw new IOException("Unknown story category");
+            } else { s.remove("category"); }
             idList(s,"personIds"); idList(s,"mediaIds");
         }
         for (JSONObject m : media.values()) {

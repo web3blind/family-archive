@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function renderStories(stories) {
     if (!stories.length) return '<p class="empty-state">Истории пока не связаны с этим человеком.</p>';
-    return stories.map((story) => `<article class="story-card"><h4>${escapeHtml(story.title || 'Без названия')}</h4><p class="meta">${escapeHtml([story.date, story.author].filter(Boolean).join(' · '))}</p><p>${escapeHtml(story.text)}</p></article>`).join('');
+    return stories.map((story) => `<article class="story-card"><h4>${escapeHtml(story.title || 'Без названия')}</h4><p class="meta">${escapeHtml([core.storyCategoryLabel(story.category), story.date, story.author].filter(Boolean).join(' · '))}</p><p>${escapeHtml(story.text)}</p></article>`).join('');
   }
 
   function renderMedia(media) {
